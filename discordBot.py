@@ -24,6 +24,7 @@ errorChannel = discord.Object(id="420918104491687936") #error channel ID in my d
 
 customCommandManagers = ["304316646946897920", "156128628726300673"] # ids of users who can add/edit/delete custom commands
 quoteManagers = ["304316646946897920"] # people who can manage quotes, will change soon
+dontReact = []
 space = ' '
 
 voice = None
@@ -96,6 +97,7 @@ async def on_message(message):
     global voice
     global player
     global quotesList
+    global dontReact
     
     try:
         print(str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.content))
@@ -107,6 +109,10 @@ async def on_message(message):
         else:
             arguments = message.content.split(' ') # splits the command at each space, so we can eaisly get each argument
             command = arguments[0].lower() # takes first argument, makes it lowercase, and stores it in a variable so we can see if the command is something we should attempt to do something with
+        
+        if message.server.id not in dontReact:
+            await client.add_reaction(message, '👍')
+            await client.add_reaction(message, '👎')
         
         if command == '!off': #allows me to turn the bot on and off
             if message.author.id == "304316646946897920":
