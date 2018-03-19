@@ -100,8 +100,12 @@ async def on_message(message):
     global dontReact
     
     try:
-        print(str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.content))
+        if message.server == None:
+            print(str(message.timestamp.time()).split('.')[0] + ': ' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.content))
+        else:
+            print(str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.content))
         # Prints 'TIME: [server] #channel >> sender: message' to the log
+        # If private message, 'TIME: Direct Message with <Username> >> Username#0000: <messabe>
         
         # we do not want the bot to reply to itself
         if message.author == client.user:
@@ -110,9 +114,7 @@ async def on_message(message):
             arguments = message.content.split(' ') # splits the command at each space, so we can eaisly get each argument
             command = arguments[0].lower() # takes first argument, makes it lowercase, and stores it in a variable so we can see if the command is something we should attempt to do something with
         
-        if message.server.id not in dontReact:
-            await client.add_reaction(message, '👍')
-            await client.add_reaction(message, '👎')
+        
         
         if command == '!off': #allows me to turn the bot on and off
             if message.author.id == "304316646946897920":
@@ -158,8 +160,30 @@ async def on_message(message):
             if command == '!myid': # puts the users ID in chat. This is not a private thing that nobody should know, you can see anyones ID if you are in devolper mode
                 await chat.chat(message.channel, '{0.author.mention}, your unique ID is {0.author.id}.'.format(message))
                 
-            elif command == '!song': # plays a song in the voice channel that the user is in. COMING SOON
+            elif command == '!settings':
+                if message.server == None:
+                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    return
+                if message.author == message.server.owner:
+                    if arguments[1].lower() == 'autolike':
+                        if arguments[2].lower() == 'false':
+                            if message.server.id not in dontReact:
+                                dontReact.append(message.server.id)
+                                await chat.chat(message.channel, 'Setting \'autolike\' is now false')
+                            else:
+                                await chat.chat(message.channel, 'Setting \'autolike\' is already false')
+                        elif arguments[2].lower() == 'true':
+                            if message.server.id not in dontReact:
+                                dontReact.pop(message.server.id)
+                                await chat.chat(message.channel, 'Setting \'autolike\' is now true')
+                            else:
+                                await chat.chat(message.channel, 'Setting \'autolike\' is already true')
+                
+            elif command == '!song': # plays a song in the voice channel that the user is in.
                 #client.delete_message(message)
+                if message.server == None:
+                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    return
                 try:
                     arguments[1]
                 except IndexError:
@@ -209,6 +233,9 @@ async def on_message(message):
                 await chat.chat(message.channel, 'You can use "{user}" and it will mention the user who sends the message, and "{time}" will put the time the users message was sent')
             
             elif command == '!addcom' or command == '!comadd':
+                if message.server == None:
+                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    return
                 if message.author.id in customCommandManagers or message.author == message.server.owner:
                     if message.content.count(space) >= 2:
                         try:
@@ -241,6 +268,9 @@ async def on_message(message):
                     await chat.chat(message.channel, 'You dont have permission to use that command!')
                                         
             elif command == '!delcom' or command == '!comdel':
+                if message.server == None:
+                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    return
                 if message.author.id in customCommandManagers or message.author == message.server.owner:
                     if message.content.count(space) == 1:
                         try:
@@ -272,6 +302,9 @@ async def on_message(message):
                     await chat.chat(message.channel, 'You dont have permission to use that command!')
 
             elif command == '!editcom' or command == '!comedit':
+                if message.server == None:
+                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    return
                 if message.author.id in customCommandManagers or message.author == message.server.owner:
                     if message.content.count(space) >= 2:
                         try:
@@ -306,6 +339,9 @@ async def on_message(message):
                 # QUOTES ----------------------------------------------------
 
             elif command == '!quotes' or command == '!quote':
+                if message.server == None:
+                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    return
                 try:
                     quotesList[str(message.server.id)]
                 except KeyError:
@@ -380,6 +416,11 @@ async def on_message(message):
                         await chat.chat(message.channel, 'There are no quotes yet!')
                         
             else:
+                if message.server == None:
+                    return
+                if message.server.id not in dontReact and botIsOn:
+                    await client.add_reaction(message, '👍')
+                    await client.add_reaction(message, '👎')
                 try:
                     for l in range(11):
                         try:

@@ -4,10 +4,10 @@
 ## \/ DO NOT CHANGE THIS \/
 botType = "TheDerpyMemeBot"
 abr = "Beta"
-ver = "1.01"
-verName = "Reactions"
+ver = "2.0"
+verName = "Private Messages Update"
 
-nextUpdate = "More Discord Things"
+nextUpdate = "idk"
 
 version = botType + ' ' + abr + ' ' + ver
 ## /\ DO NOT CHANGE THIS /\
