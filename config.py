@@ -4,7 +4,7 @@
 ## \/ DO NOT CHANGE THIS \/
 botType = "TheDerpyMemeBot"
 abr = "Beta"
-ver = "2.0"
+ver = "2.01"
 verName = "Private Messages Update"
 
 nextUpdate = "idk"

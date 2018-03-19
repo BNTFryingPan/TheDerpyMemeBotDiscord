@@ -225,9 +225,9 @@ async def on_message(message):
                     
             elif command == '!hug':
                 try:
-                    await chat.chat(message.channel, '/me makes ' + str(message.author) + ' hug ' + arguments[1] + '! HUGS! TwitchUnity bleedPurple <3')
+                    await chat.me(message.channel, 'makes ' + str(message.author) + ' hug ' + arguments[1] + '! HUGS! TwitchUnity bleedPurple <3')
                 except IndexError:
-                    await chat.chat(message.channel, '/me hugs ' + str(message.author) + '! HUGS!!!')
+                    await chat.me(message.channel, 'hugs ' + str(message.author) + '! HUGS!!!')
                 
             elif command == '!comhelp':
                 await chat.chat(message.channel, 'You can use "{user}" and it will mention the user who sends the message, and "{time}" will put the time the users message was sent')
