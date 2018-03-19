@@ -9,6 +9,7 @@ import time
 import datetime
 import asyncio
 import random
+
 ## Everything Else
 import config as cfg
 
@@ -23,7 +24,7 @@ sendMessages = True
 errorChannel = discord.Object(id="420918104491687936") #error channel ID in my discord server so i can see the traceback of errors when i dont have access to the shell window
 
 customCommandManagers = ["304316646946897920", "156128628726300673"] # ids of users who can add/edit/delete custom commands
-quoteManagers = ["304316646946897920"] # people who can manage quotes, will change soon
+quoteManagers = ["304316646946897920", "156128628726300673"] # people who can manage quotes, will change soon
 dontReact = []
 space = ' '
 
@@ -51,32 +52,32 @@ def getCustomCommands():
     except:
         print('There was a problem getting the command list FeelsBadMan [' + str(sys.exc_info()) + ']')
         raise
-        
+
 class chat:
-        
+
     async def chat(channel, message):
         if sendMessages:
             await client.send_message(channel, message)
         else:
             print('Sending Messages is disabled...')
-          
+
     async def me(channel, message):
         await chat.chat(channel, '_' + message + '_')
-        
+
     async def tableflip(channel, message):
         await chat.chat(channel, message + '(╯°□°）╯︵ ┻━┻')
-    
+
     async def unflip(channel, message):
         await chat.chat(channel, message + '┬─┬ ノ( ゜-゜ノ)')
-        
+
     async def shrug(channel, message):
         await chat.chat(channel, message + '¯\_(ツ)_/¯')
-        
+
     async def tts(channel, message):
         await client.send_message(channel, message, tts=True)
-        
-       
-        
+
+
+
 async def checkStreamStatus():
     while not client.is_closed:
         await client.wait_until_ready()
@@ -84,7 +85,7 @@ async def checkStreamStatus():
             if server.owner.game.type == 1:
                 await chat.chat(errorChannel, 'Owner of ' + str(server) + ' is now live on Twitch')
         time.sleep(100)
-        
+
 @client.event
 async def on_message(message):
     global botIsOn
@@ -98,7 +99,7 @@ async def on_message(message):
     global player
     global quotesList
     global dontReact
-    
+
     try:
         if message.server == None:
             print(str(message.timestamp.time()).split('.')[0] + ': ' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.content))
@@ -106,16 +107,16 @@ async def on_message(message):
             print(str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.content))
         # Prints 'TIME: [server] #channel >> sender: message' to the log
         # If private message, 'TIME: Direct Message with <Username> >> Username#0000: <messabe>
-        
+
         # we do not want the bot to reply to itself
         if message.author == client.user:
             return
         else:
             arguments = message.content.split(' ') # splits the command at each space, so we can eaisly get each argument
             command = arguments[0].lower() # takes first argument, makes it lowercase, and stores it in a variable so we can see if the command is something we should attempt to do something with
-        
-        
-        
+
+
+
         if command == '!off': #allows me to turn the bot on and off
             if message.author.id == "304316646946897920":
                 if botIsOn:
@@ -125,7 +126,7 @@ async def on_message(message):
                     await chat.chat(message.channel, 'Bot is already off!')
             else:
                 await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
-                
+
         elif command == '!on': #allows me to turn the bot on and off
             if message.author.id == "304316646946897920":
                 if not botIsOn:
@@ -135,11 +136,11 @@ async def on_message(message):
                     await chat.chat(message.channel, 'Bot is already on!')
             else:
                 await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
-                
+
         elif command == '!error':
             if message.author.id == "304316646946897920":
                 raise ZeroDivisionError('Error raised on request')
-                
+
         elif command == '!exec': # allows me to run a command in the console from anywhere, and responds with the traceback
             if message.author.id == "304316646946897920":
                 todo = message.content.split(' ', 1)[1]
@@ -150,16 +151,16 @@ async def on_message(message):
                     await chat.chat(message.channel, tb)
                 else:
                     await chat.chat(message.channel, 'No exception occured in running this command!')
-                    
+
         elif command == '!tdmbstatus': #allows me to change the 'playing' status of the bot
             if message.author.id == "304316646946897920":
                 await client.change_presence(game=discord.Game(name=message.content.split(' ', 1)[1]))
                 await chat.chat(message.channel, 'Status is now: ' + message.content.split(' ', 1)[1])
-            
-        elif botIsOn: # if the bot is on:              
+
+        elif botIsOn: # if the bot is on:
             if command == '!myid': # puts the users ID in chat. This is not a private thing that nobody should know, you can see anyones ID if you are in devolper mode
                 await chat.chat(message.channel, '{0.author.mention}, your unique ID is {0.author.id}.'.format(message))
-                
+
             elif command == '!settings':
                 if message.server == None:
                     await chat.chat(message.channel, 'This command cannot be used in Private Messages')
@@ -178,7 +179,7 @@ async def on_message(message):
                                 await chat.chat(message.channel, 'Setting \'autolike\' is now true')
                             else:
                                 await chat.chat(message.channel, 'Setting \'autolike\' is already true')
-                
+
             elif command == '!song': # plays a song in the voice channel that the user is in.
                 #client.delete_message(message)
                 if message.server == None:
@@ -213,25 +214,25 @@ async def on_message(message):
                         await chat.chat(errorChannel, 'Error Playing music... Server: ' + str(message.server) + ', Error: ' + str(err) + ', Check the python console for more information.')
                         await voice.disconnect()
                         raise
-                    
+
             elif command == '!version': # says bot version in chat
                 await chat.chat(message.channel, 'Bot Version: ' + cfg.version)
-                
+
             elif command == '!age':
                 try:
                     await chat.chat(message.channel, arguments[1] + ' is ' + str(random.randint(0, 100)) + ' years old :Kappa:')
                 except IndexError:
                     await chat.chat(message.channel, str(message.author) + ' is ' + str(random.randint(0, 100)) + ' years old :Kappa:')
-                    
+
             elif command == '!hug':
                 try:
                     await chat.me(message.channel, 'makes ' + str(message.author) + ' hug ' + arguments[1] + '! HUGS! TwitchUnity bleedPurple <3')
                 except IndexError:
                     await chat.me(message.channel, 'hugs ' + str(message.author) + '! HUGS!!!')
-                
+
             elif command == '!comhelp':
                 await chat.chat(message.channel, 'You can use "{user}" and it will mention the user who sends the message, and "{time}" will put the time the users message was sent')
-            
+
             elif command == '!addcom' or command == '!comadd':
                 if message.server == None:
                     await chat.chat(message.channel, 'This command cannot be used in Private Messages')
@@ -241,10 +242,10 @@ async def on_message(message):
                         try:
                             newargs = arguments[2:]
                             output = ' '.join(newargs)
-                            
+
                             commandadd = arguments[1]
                             answer = output
-                            
+
                             if commandadd in globalCommands:
                                 await chat.chat(message.channel, 'You cant add that command, as it is already a global TDMB command')
                             else:
@@ -263,10 +264,10 @@ async def on_message(message):
                             await chat.chat(message.channel, '[ERROR] Did you use the command the right way? !addcom <commandTrigger> <output>')
                             if debug == true:
                                 await chat.chat(str(sys.exc_info()[0]))
-                            
+
                 else:
                     await chat.chat(message.channel, 'You dont have permission to use that command!')
-                                        
+
             elif command == '!delcom' or command == '!comdel':
                 if message.server == None:
                     await chat.chat(message.channel, 'This command cannot be used in Private Messages')
@@ -310,10 +311,10 @@ async def on_message(message):
                         try:
                             newargs = arguments[2:]
                             output = ' '.join(newargs)
-                                
+
                             commandedit = arguments[1]
                             answer = output
-                            
+
                             if commandedit in globalCommands:
                                 await chat.chat(message.channel, 'You can\t edit global commands')
                             else:
@@ -324,13 +325,13 @@ async def on_message(message):
                                         json.dump(commandsList, commandsDatabase)
                                 except KeyError:
                                     await chat.chat(message.channel, 'That command doesnt exist.')
-                                    
+
                         except IndexError:
                             blab = 1
                             await chat.chat(message.channel, 'Did you use the command the right way? !editcom <commandTrigger> <output>')
                             if debug == true:
                                 await chat.chat(message.channel, str(sys.exc_info()[0]))
-                            
+
                 else:
                     await chat.chat(message.channel, 'You dont have permission to use that command!')
 
@@ -346,20 +347,20 @@ async def on_message(message):
                     quotesList[str(message.server.id)]
                 except KeyError:
                     quotesList[str(message.server.id)] = {}
-                    
+
                 try:
                     if arguments[1].lower() == 'add':
                         if message.author.id in quoteManagers or message.author == message.server.owner:
                             try:
                                 newargs = arguments[2:]
                                 newQuote = ' '.join(newargs)
-                                    
-                                loop = True    
+
+                                loop = True
                                 while loop == True:
                                     quoteNumber = 1
                                     try:
                                         quotesList[message.server.id][str(quoteNumber)]
-                                        
+
                                         quoteNumber += 1
                                     except KeyError:
                                         quoteNumber = str(quoteNumber)
@@ -372,20 +373,20 @@ async def on_message(message):
                                     await chat.chat(message.channel, 'Quote Added as #' + quoteNumber + '!')
                                     with open('quotes.json', 'w') as quoteDatabase:
                                         json.dump(quotesList, quoteDatabase)
-                                        
+
                             except IndexError:
                                 await chat.chat(message.channel, 'Did you provide a quote to add?')
-          
+
                         else:
                             await chat.chat(message.channel, 'You dont have permission to add a quote!')
                     elif arguments[1].lower() == 'del':
                         if message.author.id in quoteManagers or message.author == message.server.owner:
                             try:
                                 quotedel = arguments[2]
-                                
+
                                 try:
                                     quotesList[message.server.id][quotedel]
-                                    
+
                                     del quotesList[message.server.id][quotedel]
                                     await chat.chat(message.channel, 'Deleted Quote #' + quotedel)
                                     with open('quotes.json', 'w') as quoteDatabase:
@@ -399,14 +400,14 @@ async def on_message(message):
                     else:
                         try:
                             quoteNumber = str(int(arguments[1]))
-                            
+
                             try:
                                 await chat.chat(message.channel, 'Quote #' + quoteNumber + ': ' + quotesList[message.server.id][quoteNumber])
                             except (IndexError, KeyError):
                                 await chat.chat(message.channel, 'That quote doesnt exist!')
                         except ValueError:
                             await chat.chat(message.channel, 'Did you enter a quote number?')
-                            
+
                 except IndexError:
                     try:
                         randomQuote = random.choice(list(quotesList[message.server.id].keys()))
@@ -414,7 +415,7 @@ async def on_message(message):
                         await chat.chat(message.channel, 'Quote #' + str(randomQuote) + ': ' + quotesList[message.server.id][str(randomQuote)])
                     except (IndexError, KeyError):
                         await chat.chat(message.channel, 'There are no quotes yet!')
-                        
+
             else:
                 if message.server == None:
                     return
@@ -428,11 +429,11 @@ async def on_message(message):
                         except IndexError:
                             arguments.append('')
                     for key in commandsList[str(message.server.id)]:
-                        if message.content.startswith(key): # NORMAL custom commands
+                        if message.content.startswith(key):
                             await chat.chat(message.channel, str(commandsList[str(message.server.id)].get(key)).format(arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9], user = str(message.author.mention), time=str(message.timestamp.time()).split('.')[0]))
                 except KeyError:
                     pass
-                    
+
     except Exception as err:
         try:
             tb = traceback.format_exc()
@@ -456,16 +457,16 @@ async def on_ready():
     print('Client ID: ' + client.user.id)
     print('----------------------------------')
     ##chat('main-chat', 'The Derpy Meme Bot version ' + cfg.version + ' is now running!')
-    
-    await client.change_presence(game=discord.Game(name=cfg.version))
-    
+
+    await client.change_presence(game=discord.Game(name=cfg.version, type=1))
+
     hard_coded_channel = discord.Object(id="332601647870115842")
     await chat.chat(hard_coded_channel, 'The Derpy Meme Bot version ' + cfg.version + ' is now running!')
 
 def runBot():
     #client.loop.create_task(checkStreamStatus())
     client.run(TOKEN)
-    
+
 botT = threading.Thread(target=runBot)
 if __name__ == '__main__':
     botT.start()
