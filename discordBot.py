@@ -10,16 +10,17 @@ import datetime
 import asyncio
 import random
 
+from discord.ext import commands
+
 ## Everything Else
 import config as cfg
-
-# I use ' (single quote) for any text that will be sent or printed, and " (double quote) for any internal things
+#import musicPlayer as mP
 
 TOKEN = cfg.token #gets token from config file, might change to a ConfigParser
 client = discord.Client() # Creates client
 
 ## Variables
-botIsOn = True #so bot can be turned on and off remotley, without having to stop the bot completley
+botIsOn = True #so bot can be turned on and off remotely, without having to stop the bot completley
 sendMessages = True
 errorChannel = discord.Object(id="420918104491687936") #error channel ID in my discord server so i can see the traceback of errors when i dont have access to the shell window
 
@@ -32,6 +33,93 @@ voice = None
 player = None
 # VVV list of global command names VVV
 globalCommands = ['!off', '!on', '!exec', '!myid', '!tdmbstatus', '!playsong', '!addcom', '!comadd', '!quotes', '!quote', '!delcom', '!comdel', '!editcom', '!comedit', '!version', '!comhelp']
+
+
+class VoiceEntry:
+    def __init__(self, message, player):
+        self.requester = message.author
+        self.channel = message.channel
+        self.player = player
+
+    def __str__(self):
+        fmt = '*{0.title}*, uploaded by **{0.uploader}**, requested by **{1.display_name}**'
+        duration = self.player.duration
+        if duration:
+            fmt = fmt + ' [length: **{0[0]}m {0[1]}s]**'.format(divmod(duration, 60))
+        return fmt.format(self.player, self.requester)
+
+class VoiceState:
+    def __init__(self, bot):
+        self.current = None
+        self.voice = None
+        self.client = client
+        self.play_next_song = asyncio.Event()
+        self.songs = asyncio.Queue()
+        self.skip_votes = set() # a set of user_ids that voted
+        self.audio_player = self.client.loop.create_task(self.audio_player_task())
+
+    def is_playing(self):
+        if self.voice is None or self.current is None:
+            return False
+
+        player = self.current.player
+        return not player.is_done()
+
+    @property
+    def player(self):
+        return self.current.player
+
+    def skip(self):
+        self.skip_votes.clear()
+        if self.is_playing():
+            self.player.stop()
+
+    def toggle_next(self):
+        self.client.loop.call_soon_threadsafe(self.play_next_song.set)
+
+    async def audio_player_task(self):
+        while True:
+            self.play_next_song.clear()
+            self.current = await self.songs.get()
+            await self.client.send_message(self.current.channel, 'Now playing ' + str(self.current))
+            self.current.player.start()
+            await self.play_next_song.wait()
+
+
+class Music:
+    """Voice related commands.
+    Works in multiple servers at once.
+    """
+    voice_states = {}
+    bot = client
+    #def __init__(self, bot):
+        #self.bot = bot
+        #self.voice_states = {}
+
+    def get_voice_state(self, server):
+        state = self.voice_states.get(server.id)
+        if state is None:
+            state = VoiceState(self.bot)
+            self.voice_states[server.id] = state
+
+        return state
+
+    async def create_voice_client(self, channel):
+        voice = await client.join_voice_channel(channel)
+        state = self.get_voice_state(channel.server)
+        state.voice = voice
+
+    def __unload(self):
+        for state in self.voice_states.values():
+            try:
+                state.audio_player.cancel()
+                if state.voice:
+                    self.bot.loop.create_task(state.voice.disconnect())
+            except:
+                pass
+
+# I use ' (single quote) for any text that will be sent or printed, and " (double quote) for any internal things
+
 
 quotesList = {}
 def getQuotes():
@@ -182,38 +270,156 @@ async def on_message(message):
 
             elif command == '!song': # plays a song in the voice channel that the user is in.
                 #client.delete_message(message)
+                self = Music
                 if message.server == None:
-                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
-                    return
-                try:
-                    arguments[1]
-                except IndexError:
-                    await chat.chat(message.channel, 'Did you supply the id of the video to listen to?')
-                    return
-                if arguments[1].lower() in ['current', 'title']:
-                    await chat.chat(message.channel, '[' + player.duration + '] ' + player.title)
-                elif arguments[1].lower() in ['desc', 'description']:
-                    await chat.chat(message.channel, player.description)
+                    await chat.chat('This command cannot be used in Private Messages.')
                 else:
                     try:
-                        voice = await client.join_voice_channel(message.author.voice_channel)
-                        player = await voice.create_ytdl_player('https://www.youtube.com/watch?v=' + arguments[1])
-                        if player.likes > player.dislikes and player.duration <= 600:
-                            await chat.chat(message.channel, 'Playing ' + player.title + ' in ' + str(message.author.voice_channel) + '...')
-                            player.start()
-                            await asyncio.sleep(int(player.duration + 2))
-                            await voice.disconnect()
+                        arguments[1]
+                    except IndexError:
+                        await chat.chat(message.channel, 'Did you provide any arguments?')
+                        return
+                    if arguments[1].lower() == 'join':
+                        try:##### move functions to IF statements in !song in discordBot.py
+                            await Music.create_voice_client(message.author.voiceChannel)
+                        except discord.ClientException:
+                            await chat.chat(message.server, 'Already in a voice channel...')
+                        except discord.InvalidArgument:
+                            await chat.chat(message.server, 'This is not a voice channel...')
                         else:
-                            await chat.chat(message.channel, 'The video needs to have more likes than dislikes and be less that 10 minutes long.')
+                            await chat.chat(message.server, 'Ready to play audio in ' + message.author.voiceChannel)
+                    elif arguments[1].lower() == 'summon':
+                        """Summons the bot to join your voice channel."""
+                        summoned_channel = message.author.voice_channel
+                        if summoned_channel is None:
+                            await chat.chat(message.server, 'You are not in a voice channel.')
+                            return
 
-                    except discord.errors.InvalidArgument:
-                        await chat.chat(message.channel, 'You must me in a voice channel to use this command')
-                    except discord.errors.ClientException:
-                        await chat.chat(message.channel, 'The bot is already in a voice channel...')
-                    except Exception as err:
-                        await chat.chat(errorChannel, 'Error Playing music... Server: ' + str(message.server) + ', Error: ' + str(err) + ', Check the python console for more information.')
-                        await voice.disconnect()
-                        raise
+                        state = self.get_voice_state(Music, message.server)
+                        if state.voice is None:
+                            state.voice = await client.join_voice_channel(summoned_channel)
+                        else:
+                            await state.voice.move_to(summoned_channel)
+
+                        return
+
+                    elif arguments[1].lower() == 'play':
+                        """Plays a song.
+                        If there is a song currently in the queue, then it is
+                        queued until the next song is done playing.
+                        This command automatically searches as well from YouTube.
+                        The list of supported sites can be found here:
+                        https://rg3.github.io/youtube-dl/supportedsites.html
+                        """
+                        state = self.get_voice_state(Music, message.server)
+                        opts = {
+                            'default_search': 'auto',
+                            'quiet': True,
+                        }
+                        try:
+                            arguments[2]
+                        except IndexError:
+                            await chat.chat(message.server, 'Did you provide a song to listen to?')
+                            return
+
+                        summoned_channel = message.author.voice_channel
+                        if summoned_channel is None:
+                            await chat.chat(message.server, 'You are not in a voice channel.')
+                            return
+
+                        state = self.get_voice_state(Music, message.server)
+                        if state.voice is None:
+                            state.voice = await client.join_voice_channel(summoned_channel)
+                        else:
+                            await state.voice.move_to(summoned_channel)
+
+                        try:
+                            player = await state.voice.create_ytdl_player(arguments[2], ytdl_options=opts, after=state.toggle_next)
+                        except Exception as e:
+                            fmt = 'An error occurred while processing this request: ```py\n{}: {}\n```'
+                            await client.send_message(message.channel, fmt.format(type(e).__name__, e))
+                        else:
+                            player.volume = 0.6
+                            entry = VoiceEntry(message, player)
+                            await chat.chat(message.server, 'Enqueued ' + str(entry))
+                            await state.songs.put(entry)
+
+                    elif arguments[1].lower() == 'volume':
+                        """Sets the volume of the currently playing song."""
+
+                        state = self.get_voice_state(Music, message.server)
+                        if state.is_playing():
+                            player = state.player
+                            player.volume = value / 100
+                            await chat.chat(message.server, 'Set the volume to {:.0%}'.format(player.volume))
+
+                    elif arguments[1].lower() == 'pause':
+                        """Pauses the currently played song."""
+                        state = self.get_voice_state(Music, message.server)
+                        if state.is_playing():
+                            player = state.player
+                            player.pause()
+
+                    elif arguments[1].lower() == 'resume':
+                        """Resumes the currently played song."""
+                        state = self.get_voice_state(Music, message.server)
+                        if state.is_playing():
+                            player = state.player
+                            player.resume()
+
+                    elif arguments[1].lower() == 'stop':
+                        """Stops playing audio and leaves the voice channel.
+                        This also clears the queue.
+                        """
+                        server = message.server
+                        state = self.get_voice_state(Music, message.server)
+
+                        if state.is_playing():
+                            player = state.player
+                            player.stop()
+
+                        try:
+                            state.audio_player.cancel()
+                            del self.voice_states[message.server.id]
+                            await state.voice.disconnect()
+                        except:
+                            pass
+
+
+                    elif arguments[1].lower() == 'skip':
+                        """Vote to skip a song. The song requester can automatically skip.
+                        3 skip votes are needed for the song to be skipped.
+                        """
+
+                        state = self.get_voice_state(Music, message.server)
+                        if not state.is_playing():
+                            await chat.chat(message.server, 'Not playing any music right now...')
+                            return
+
+                        voter = message.author
+                        if voter == state.current.requester:
+                            await chat.chat(message.server, 'Requester requested skipping song...')
+                            state.skip()
+                        elif voter.id not in state.skip_votes:
+                            state.skip_votes.add(voter.id)
+                            total_votes = len(state.skip_votes)
+                            if total_votes >= 3:
+                                await chat.chat(message.server, 'Skip vote passed, skipping song...')
+                                state.skip()
+                            else:
+                                await chat.chat(message.server, 'Skip vote added, currently at [{}/3]'.format(total_votes))
+                        else:
+                            await chat.chat(message.server, 'You have already voted to skip this song.')
+
+                    elif arguments[1].lower() == 'playing':
+                        """Shows info about the currently played song."""
+
+                        state = self.get_voice_state(Music, message.server)
+                        if state.current is None:
+                            await chat.chat(message.server, 'Not playing anything.')
+                        else:
+                            skip_count = len(state.skip_votes)
+                            await chat.chat(message.server, 'Now playing {} [skips: {}/3]'.format(state.current, skip_count))
 
             elif command == '!version': # says bot version in chat
                 await chat.chat(message.channel, 'Bot Version: ' + cfg.version)
@@ -450,7 +656,7 @@ async def on_ready():
     print('Loaded Quotes Database!')
     if not discord.opus.is_loaded():
         print('Loading Opus...')
-        discord.opus.load_opus(opus)
+        discord.opus.load_opus('opus')
         print('Loaded Opus!')
     print('Logged in...')
     print('Username: ' + client.user.name)
@@ -465,6 +671,7 @@ async def on_ready():
 
 def runBot():
     #client.loop.create_task(checkStreamStatus())
+    #client.add_cog(Music(bot))
     client.run(TOKEN)
 
 botT = threading.Thread(target=runBot)
