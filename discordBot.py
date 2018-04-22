@@ -20,8 +20,6 @@ if True:
     pass
     
 if True:
-
-    randomServerInvites = ['https://discord.gg/8sMNJ3']
     TOKEN = cfg.token #gets token from config file, might change to a ConfigParser
     client = discord.Client() # Creates client
 
@@ -47,6 +45,8 @@ if True:
     
     bannedUsers = []
     warnUsers = []
+    
+    cooldowns = {}
     
     voice = None
     player = None
@@ -83,7 +83,8 @@ if True:
         '!settings', 
         '!song',
         '!duel',
-        '!acceptduel'
+        '!acceptduel',
+        '!ban'
         ]
 
 def getDRTMFile():
@@ -237,6 +238,13 @@ def getSongQueue():
     else:
         return
         
+def getBannedUsers():
+    global bannedUsers
+    global warnUsers
+    with open('bannedUsers.json') as f:
+        bannedUsers = json.load(f)
+    with open('warnUsers.json') as f:
+        warnUsers = json.load(f)
 class chat:
     async def chat(channel, message, tts=False):
         msg = await client.send_message(channel, message, tts=tts)
@@ -300,6 +308,7 @@ async def on_message(message):
     global awaitingDuel
     global bannedUsers
     global warnUsers
+    global cooldowns
     
     unicode = dict.fromkeys(range(0x10000, sys.maxunicode + 1), 0xfffd)
     
@@ -431,7 +440,7 @@ async def on_message(message):
             else:
                 await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
         
-        elif command == '!ban':
+        elif command == '!ban': # lets me ban users
             if author.id == leo:
                 try:
                     arguments[1]
@@ -469,22 +478,25 @@ async def on_message(message):
             if message.server == None:
                 pass
             else:
-                if message.server.id in drtf:
-                    if message.channel.id in drtf[message.server.id]:
-                        return
-            if message.server == None:
-                pass
-            else:
                 if message.server.id not in points:
                     points[message.server.id] = {'pointsEarned': 1}
                     print('Added ' + str(message.server) + ' to points list')
-        
-            if message.server is None or message.author.id in points[message.server.id]:
+                
+                if message.author.id not in points[server.id]:
+                    points[message.server.id][message.author.id] = 0
+                    print('Added ' + str(message.author) + ' to points list in ' + str(message.server))
+                    
+                if message.server.id in drtf:
+                    if message.channel.id in drtf[message.server.id]:
+                        return
+                else:
+                    drtf[server.id] = []
+                
+            if author.id in cooldowns:
                 pass
             else:
-                points[message.server.id][message.author.id] = 0
-                print('Added ' + str(message.author) + ' to points list in ' + str(message.server))
-                
+                cooldowns[author.id] = []
+                                
             if command == '!id': # puts the users ID in chat. This is not a private thing that nobody should know, you can see anyones ID if you are in devolper mode
                 try:
                     arguments[1]
@@ -535,10 +547,15 @@ async def on_message(message):
                     await chat.chat(message.channel, 'This is not the command you are looking for!')
             
             elif command == '!claimreward':
+                if 'rewards' in cooldowns[author.id]:
+                    return
                 if server == None:
                     await chat.chat(ch, cfg.noPMcmdRes)
                     return
+                
+                
                 else:
+                    cooldowns[author.id].append('rewards')
                     try:
                         arguments[1]
                     except IndexError:
@@ -551,11 +568,16 @@ async def on_message(message):
                                 await chat.chat(server.owner, str(author) + ' redeemed reward: ' + arguments[1])
                             else:
                                 await chat.chat(ch, 'You dont have enough points for that reward. You need ' + str(rewards[server.id][arguments[1]] - points[server.id][author.id]) + ' more points.')
-                                
+                await asyncio.sleep(5)
+                cooldowns[author.id].remove('rewards')
+                
             elif command == '!managerewards':
+                if 'rewards' in cooldowns[author.id]:
+                    return
                 # arg 1 = add/del
                 # arg 2 = reward name
                 # arg 3 = reward cost
+                cooldowns[author.id].append('rewards')
                 if message.server == None:
                     await chat.chat(message.channel, cfg.noPMcmdRes)
                 else:
@@ -606,8 +628,13 @@ async def on_message(message):
                                         await chat.chat(ch, 'Removed ' + arguments[2] + ' from the rewards list.')
                                     else:
                                         await chat.chat(ch, 'That reward doesnt exist!')
-                                
+                await asyncio.sleep(5)
+                cooldowns[author.id].remove('rewards')
+                
             elif command == '!gamblepoints' or command == '!gamble': # Gambles points
+                if 'gamble' in cooldowns[author.id]:
+                    return
+                    
                 if message.server == None:
                     await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
@@ -623,6 +650,7 @@ async def on_message(message):
                 else:
                     if gambling <= points[message.server.id][message.author.id]:
                         if gambling >= 1:
+                            cooldowns[author.id].append('gamble')
                             await chat.chat(message.channel, 'Gambling ' + str(gambling) + ' points...')
                             points[message.server.id][message.author.id] -= gambling
                             
@@ -638,13 +666,17 @@ async def on_message(message):
                                 await asyncio.sleep(5)
                                 points[message.server.id][message.author.id] += gambling * 2
                                 await chat.chat(message.channel, message.author.mention + ' You earned ' + str(gambling) + ' points from gambling. You now have ' + str(points[message.server.id][message.author.id]) + ' points! Dont get too greedy!')
-
+                            
+                            
+                            await asyncio.sleep(1)
+                            if 'gamble' in cooldowns[author.id]:
+                                cooldowns[author.id].remove('gamble')
                         else:
                             await chat.chat(message.channel, 'You can\'t bet zero or negitive points')
                     else:
                         await chat.chat(message.channel, 'You don\'t have that many points! You need ' + str(gambling-points[message.server.id][message.author.id]) + ' more points to gamble that amount.')
             
-            elif command == '!duel':
+            elif command == '!duel': # sends a request to duel with someone
                 if server == None:
                     await chat.chat(ch, 'You lost the duel! ' + cfg.noPMcmdRes)
                 else:
@@ -708,7 +740,7 @@ async def on_message(message):
                                 else:
                                     await chat.chat(ch, 'You lost the duel! You dont have enough points to duel over that much')
                     
-            elif command == '!acceptduel':
+            elif command == '!acceptduel': # accepts a duel request if you have one.
                 if server == None:
                     await chat.chat(ch, 'You lost the duel! ' + cfg.noPMcmdRes)
                 else:
@@ -732,10 +764,14 @@ async def on_message(message):
                         await chat.chat(ch, 'Unable to find a duel in this server you are part of.')
                         
             elif command == '!points': # get the points of a user, or sets the points of another user.
+                if 'points' in cooldowns[author.id]:
+                    return
+                    
                 if message.server == None:
                     await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
                     
+                cooldowns[author.id].append('points')
                 try:
                     arguments[1]
                 except IndexError:
@@ -833,7 +869,9 @@ async def on_message(message):
                                 else:
                                     points[server.id][user.id] = 0
                                     await chat.chat(ch, 'User ' + user.mention + ' has 0 points! They are currently level ' + str(int(points[server.id][user.id]/1000)) + '!')
-                                
+                await asyncio.sleep(5)
+                cooldowns[author.id].remove('points')
+                
             elif command == '!song': # plays a song in the voice channel that the user is in.
                 #client.delete_message(message)
                 if message.server == None:
@@ -1008,7 +1046,7 @@ async def on_message(message):
             elif command == '!version': # says bot version in chat
                 await chat.chat(message.channel, 'Bot Version: ' + cfg.version)
                 
-            elif command == '!removechannel':
+            elif command == '!removechannel': # stops the bot from sending messages to the channel this was used in
                 if message.server == None:
                     await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
@@ -1142,9 +1180,13 @@ async def on_message(message):
                     await chat.chat(message.channel, 'You dont have permission to use that command!')
 
             elif command == '!quotes' or command == '!quote': # manages quotes
+                if 'quotes' in cooldowns[author.id]:
+                    return
                 if message.server == None:
                     await chat.chat(message.channel, 'This command cannot be used in Private Messages')
                     return
+                
+                cooldowns[author.id].append('quotes')
                 try:
                     quotesList[str(message.server.id)]
                 except KeyError:
@@ -1217,6 +1259,8 @@ async def on_message(message):
                         await chat.chat(message.channel, 'Quote #' + str(randomQuote) + ': ' + quotesList[message.server.id][str(randomQuote)])
                     except (IndexError, KeyError):
                         await chat.chat(message.channel, 'There are no quotes yet!')
+                await asyncio.sleep(10)
+                cooldowns[author.id].remove('quotes')
                 
             else:
                 if server == None:
@@ -1292,17 +1336,26 @@ def banUser(userID, tpe='ban', way='add'):
     if tpe == 'ban':
         if way == 'add':
             bannedUsers.append(str(userID))
+            with open('bannedUsers.json') as f:
+                json.dump(bannedUsers, f)
             return 'Added user to ban list'
         else:
             bannedUsers.remove(str(userID))
+            with open('bannedUsers.json') as f:
+                json.dump(bannedUsers, f)
             return 'Removed user from ban list'
     else:
         if way == 'add':
             warnUsers.append(str(userID))
+            with open('warnUsers.json') as f:
+                json.dump(warnUsers, f)
             return 'Added user to warn list'
         else:
             warnUsers.remove(str(userID))
+            with open('warnUsers.json') as f:
+                json.dump(warnUsers, f)
             return 'Removed user from warn list'
+        
         
 def runBot():
     #client.loop.create_task(checkStreamStatus())
