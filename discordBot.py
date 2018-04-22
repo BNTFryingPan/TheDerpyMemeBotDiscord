@@ -1,40 +1,130 @@
 ## Modules
-import discord
-import threading
-import traceback
-import os
-import sys
-import json
-import time
-import datetime
-import asyncio
-import random
+if True:
+    import discord
+    import threading
+    import traceback
+    import os
+    import sys
+    import json
+    import time
+    import datetime
+    import asyncio
+    import random
 
-from discord.ext import commands
+    from discord.ext import commands
 
 ## Everything Else
-import config as cfg
-#import musicPlayer as mP
+if True:
+    import config as cfg
+    #import musicPlayer as mP
+    pass
+    
+if True:
 
-TOKEN = cfg.token #gets token from config file, might change to a ConfigParser
-client = discord.Client() # Creates client
+    randomServerInvites = ['https://discord.gg/8sMNJ3']
+    TOKEN = cfg.token #gets token from config file, might change to a ConfigParser
+    client = discord.Client() # Creates client
 
-## Variables
-botIsOn = True #so bot can be turned on and off remotely, without having to stop the bot completley
-sendMessages = True
-errorChannel = discord.Object(id="420918104491687936") #error channel ID in my discord server so i can see the traceback of errors when i dont have access to the shell window
+    ## Variables
+    botIsOn = True #so bot can be turned on and off remotely, without having to stop the bot completley
+    sendMessages = True
+    errorChannel = discord.Object(id="420918104491687936") #error channel ID in my discord server so i can see the traceback of errors when i dont have access to the shell window
+    awaitingRestart = False
+    
+    customCommandManagers = ["304316646946897920", "156128628726300673"] # ids of users who can add/edit/delete custom commands
+    quoteManagers = ["304316646946897920", "156128628726300673"] # people who can manage quotes, will change soon
+    dontReact = []
+    drtf = {}
+    space = ' '
 
-customCommandManagers = ["304316646946897920", "156128628726300673"] # ids of users who can add/edit/delete custom commands
-quoteManagers = ["304316646946897920", "156128628726300673"] # people who can manage quotes, will change soon
-dontReact = []
-space = ' '
+    points = {}
+    songQueue = {}
+    rewards = {}
+    quotesList = {}
+    commandsList = {}
+    
+    awaitingDuel = {}
+    
+    bannedUsers = []
+    warnUsers = []
+    
+    voice = None
+    player = None
+    # VVV list of global command names VVV
+    globalCommands = [
+        '!addchannel', 
+        '!removechannel', 
+        '!exec', 
+        '!error', 
+        '!sudo', 
+        '!tdmbnick', 
+        '!tdmbstatus', 
+        '!off', 
+        '!on', 
+        '!quotes', 
+        '!quote', 
+        '!comadd', 
+        '!addcom', 
+        '!delcom', 
+        '!comdel', 
+        '!editcom', 
+        '!comedit', 
+        '!comhelp', 
+        '!points', 
+        '!gamble', 
+        '!gamblepoints', 
+        '!usepoints', 
+        '!managerewards',
+        '!claimreward',
+        '!age', 
+        '!version', 
+        '!hug', 
+        '!id', 
+        '!settings', 
+        '!song',
+        '!duel',
+        '!acceptduel'
+        ]
 
-voice = None
-player = None
-# VVV list of global command names VVV
-globalCommands = ['!off', '!on', '!exec', '!myid', '!tdmbstatus', '!playsong', '!addcom', '!comadd', '!quotes', '!quote', '!delcom', '!comdel', '!editcom', '!comedit', '!version', '!comhelp']
-
-
+def getDRTMFile():
+    global drtf
+    
+    with open('dontRespondToMessages.json') as f:
+        drtf = json.load(f)
+        
+def pointLoop():
+    global points
+    global rewards
+    global botIsOn
+    
+    try:
+        with open('points.json') as f:
+            points = json.load(f)
+        with open('rewards.json') as f:
+            rewards = json.load(f)
+            
+    except:
+        print('Error gettings Points')
+        raise
+        return
+        
+        
+    else:    
+        print('Loaded points file. Starting loop')
+        while pointLoop:
+            if botIsOn:
+                for server in points:
+                    for member in points[server]:
+                        if member == 'pointsEarned':
+                            pass
+                        else:
+                            points[server][member] += points[server]['pointsEarned']
+                with open('points.json', 'w') as pointDatabase:
+                    json.dump(points, pointDatabase)
+                with open('rewards.json', 'w') as rewDb:
+                    json.dump(rewards, rewDb)
+            time.sleep(10)
+        
 class VoiceEntry:
     def __init__(self, message, player):
         self.requester = message.author
@@ -85,7 +175,6 @@ class VoiceState:
             self.current.player.start()
             await self.play_next_song.wait()
 
-
 class Music:
     """Voice related commands.
     Works in multiple servers at once.
@@ -118,10 +207,6 @@ class Music:
             except:
                 pass
 
-# I use ' (single quote) for any text that will be sent or printed, and " (double quote) for any internal things
-
-
-quotesList = {}
 def getQuotes():
     global quotesList
     try:
@@ -131,7 +216,6 @@ def getQuotes():
         print('error getting quotes')
         raise
 
-commandsList = {}
 def getCustomCommands():
     global commandsList
     try:
@@ -140,39 +224,60 @@ def getCustomCommands():
     except:
         print('There was a problem getting the command list FeelsBadMan [' + str(sys.exc_info()) + ']')
         raise
-
+        
+def getSongQueue():
+    return
+    global songQueue
+    try:
+        with open('songsQueue.json') as f:
+            songQueue = json.load(f)
+    except:
+        print('There was a problem getting the songs queue FeelsBadMan [' + str(sys.exc_info()) + ']')
+        raise
+    else:
+        return
+        
 class chat:
-
-    async def chat(channel, message):
-        if sendMessages:
-            await client.send_message(channel, message)
-        else:
-            print('Sending Messages is disabled...')
+    async def chat(channel, message, tts=False):
+        msg = await client.send_message(channel, message, tts=tts)
+        return msg
 
     async def me(channel, message):
-        await chat.chat(channel, '_' + message + '_')
+        return await chat.chat(channel, '_' + message + '_')
 
     async def tableflip(channel, message):
-        await chat.chat(channel, message + '(╯°□°）╯︵ ┻━┻')
+        return await chat.chat(channel, message + '(╯°□°）╯︵ ┻━┻')
 
     async def unflip(channel, message):
-        await chat.chat(channel, message + '┬─┬ ノ( ゜-゜ノ)')
+        return await chat.chat(channel, message + '┬─┬ ノ( ゜-゜ノ)')
 
     async def shrug(channel, message):
-        await chat.chat(channel, message + '¯\_(ツ)_/¯')
+        return await chat.chat(channel, message + '¯\_(ツ)_/¯')
 
     async def tts(channel, message):
-        await client.send_message(channel, message, tts=True)
+        return await chat.chat(channel, message, tts=True)
 
-
+@client.event
+async def on_member_join(member):
+    return
+    server = member.server
+    await client.send_message(server.default_channel, 'Welcome ' + str(member) + ' to ' + server.name + '. There are now ' + str(server.member_count) + ' users in the server')
 
 async def checkStreamStatus():
-    while not client.is_closed:
-        await client.wait_until_ready()
-        for server in client.servers:
-            if server.owner.game.type == 1:
-                await chat.chat(errorChannel, 'Owner of ' + str(server) + ' is now live on Twitch')
-        time.sleep(100)
+    await client.wait_until_ready()
+    for server in client.servers:
+        while True:
+            if server.id == '432199586375794688':
+                if server.owner.game.type == 1:
+                    if titanLive is not True:
+                        titanChannel = discord.Object(id='432199586375794688')
+                        await chat.chat(titanChannel, 'Titan is now live on Twitch!')
+                        titanLive = True
+                        
+                else:
+                    titanLive = False
+                
+                time.sleep(60)
 
 @client.event
 async def on_message(message):
@@ -187,33 +292,78 @@ async def on_message(message):
     global player
     global quotesList
     global dontReact
-
+    global points
+    global rewards
+    global songQueue
+    global client
+    global drtf
+    global awaitingDuel
+    global bannedUsers
+    global warnUsers
+    
+    unicode = dict.fromkeys(range(0x10000, sys.maxunicode + 1), 0xfffd)
+    
     try:
-        if message.server == None:
-            print(str(message.timestamp.time()).split('.')[0] + ': ' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.content))
-        else:
-            print(str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.content))
+        try:
+            if message.server == None:
+                print(str(message.timestamp.time()).split('.')[0] + ': ' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.clean_content).translate(unicode))
+            else:
+                print(str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.clean_content).translate(unicode))
+        except UnicodeEncodeError:
+            pass
         # Prints 'TIME: [server] #channel >> sender: message' to the log
-        # If private message, 'TIME: Direct Message with <Username> >> Username#0000: <messabe>
-
+        # If private message, 'TIME: Direct Message with <Username> >> Username#0000: <message>
+        
+        try:
+            with open("ChatLog.txt", "a") as f:
+                f.write("\n")
+                if message.server == None:
+                    f.write(str(message.timestamp.time()).split('.')[0] + ': ' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.clean_content).translate(unicode))
+                else:
+                    f.write((str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.clean_content)).translate(unicode))
+        except UnicodeEncodeError:
+            pass
         # we do not want the bot to reply to itself
         if message.author == client.user:
             return
         else:
             arguments = message.content.split(' ') # splits the command at each space, so we can eaisly get each argument
             command = arguments[0].lower() # takes first argument, makes it lowercase, and stores it in a variable so we can see if the command is something we should attempt to do something with
+        
+        
+        server = message.server
+        leo = '304316646946897920'
+        author = message.author
+        ch = message.channel
+        channel = message.channel
+        
+        if server == None:
+            isAdmin = True
+        else:
+            isAdmin = author.server_permissions.administrator
+        
+        if command == '!addchannel':
+            if server == None:
+                await chat.chat(message.channel, cfg.noPMcmdRes)
+                return
+                
+            if author == server.owner or author.id == leo or isAdmin:
+                if channel.id in drtf[message.server.id]:
+                    drtf[message.server.id].pop(message.channel.id)
+                    with open('dontRespondToMessages.json', 'w') as f:
+                        json.dump(drtf, f)
+                else:
+                    await chat.chat(channel, 'This channel isn\'t in the list of ignored channels!')
 
-
-
-        if command == '!off': #allows me to turn the bot on and off
-            if message.author.id == "304316646946897920":
+        elif command == '!off': #allows me to turn the bot on and off
+            if author.id == leo:
                 if botIsOn:
-                    await chat.chat(message.channel, 'Turning off bot...')
+                    await chat.chat(channel, 'Turning off bot...')
                     botIsOn = False
                 else:
-                    await chat.chat(message.channel, 'Bot is already off!')
+                    await chat.chat(channel, 'Bot is already off!')
             else:
-                await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
+                await chat.chat(channel, 'This isn\'t the command you are looking for...')
 
         elif command == '!on': #allows me to turn the bot on and off
             if message.author.id == "304316646946897920":
@@ -225,10 +375,12 @@ async def on_message(message):
             else:
                 await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
 
-        elif command == '!error':
+        elif command == '!error': # forces a DivisionByZero error
             if message.author.id == "304316646946897920":
                 raise ZeroDivisionError('Error raised on request')
-
+            else:
+                await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
+                
         elif command == '!exec': # allows me to run a command in the console from anywhere, and responds with the traceback
             if message.author.id == "304316646946897920":
                 todo = message.content.split(' ', 1)[1]
@@ -239,63 +391,484 @@ async def on_message(message):
                     await chat.chat(message.channel, tb)
                 else:
                     await chat.chat(message.channel, 'No exception occured in running this command!')
-
+            else:
+                await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
+                
         elif command == '!tdmbstatus': #allows me to change the 'playing' status of the bot
             if message.author.id == "304316646946897920":
                 await client.change_presence(game=discord.Game(name=message.content.split(' ', 1)[1]))
                 await chat.chat(message.channel, 'Status is now: ' + message.content.split(' ', 1)[1])
-
+            else:
+                await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
+                
+        elif command == '!tdmbnick': # Changes the bots nickname in a server
+            if message.author.id == "304316646946897920":
+                try:
+                    arguments[1]
+                except IndexError:
+                    await chat.chat(message.channel, 'Did you provide a name to change to?')
+                else:
+                    await client.change_nickname(message.server.me, str(arguments[1]))
+                    await chat.chat(message.channel, 'Changed nickname in ' + message.server.name + ' to ' + arguments[1])
+            else:
+                await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
+                
+        elif command == '!sudo':
+            if message.server == None:
+                return
+            if message.author.id == '304316646946897920':
+                try:
+                    arguments[1]
+                except IndexError:
+                    await chat.chat(message.channel, 'Did you provide a user to run a command as?')
+                else:
+                    try:
+                        arguments[2]
+                    except IndexError:
+                        await chat.chat(message.channel, 'Did you provide a command to run?')
+                    else:
+                        await chat.chat(message.channel, 'FIGURE THIS OUT LEO DansGame')
+            else:
+                await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
+        
+        elif command == '!ban':
+            if author.id == leo:
+                try:
+                    arguments[1]
+                except IndexError:
+                    await chat.chat(ch, 'Who do you want to ban?')
+                else:
+                    try:
+                        arguments[2]
+                    except IndexError:
+                        arguments[2] = 'ban'
+                    try:
+                        arguments[3]
+                    except IndexError:
+                        arguments[3] = 'add'
+                    try:
+                        res = banUser(arguments[1], arguments[2], arguments[3])
+                        await chat.chat(ch, res)
+                    except:
+                        pass
+            else:
+                pass
+                        
         elif botIsOn: # if the bot is on:
-            if command == '!myid': # puts the users ID in chat. This is not a private thing that nobody should know, you can see anyones ID if you are in devolper mode
-                await chat.chat(message.channel, '{0.author.mention}, your unique ID is {0.author.id}.'.format(message))
-
-            elif command == '!settings':
-                if message.server == None:
-                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+            commandUsed = True
+            
+            if command.startswith('!'):
+                if author == server.owner:
+                    pass
+                elif author.id in bannedUsers:
+                    await chat.chat(ch, 'You have been banned from using TheDerpyMemeBot commands. If you think you should not be banned, please join this discord server to appeal your ban: https://discord.gg/ypVVrR5')
                     return
-                if message.author == message.server.owner:
-                    if arguments[1].lower() == 'autolike':
-                        if arguments[2].lower() == 'false':
-                            if message.server.id not in dontReact:
-                                dontReact.append(message.server.id)
-                                await chat.chat(message.channel, 'Setting \'autolike\' is now false')
+                elif author.id in warnUsers:
+                    await chat.chat(ch, 'Please watch how many commands you are using!')
+                    
+            if message.server == None:
+                pass
+            else:
+                if message.server.id in drtf:
+                    if message.channel.id in drtf[message.server.id]:
+                        return
+            if message.server == None:
+                pass
+            else:
+                if message.server.id not in points:
+                    points[message.server.id] = {'pointsEarned': 1}
+                    print('Added ' + str(message.server) + ' to points list')
+        
+            if message.server is None or message.author.id in points[message.server.id]:
+                pass
+            else:
+                points[message.server.id][message.author.id] = 0
+                print('Added ' + str(message.author) + ' to points list in ' + str(message.server))
+                
+            if command == '!id': # puts the users ID in chat. This is not a private thing that nobody should know, you can see anyones ID if you are in devolper mode
+                try:
+                    arguments[1]
+                except IndexError:
+                    await chat.chat(message.channel, '{0.author.mention}, your unique ID is {0.author.id}.'.format(message))
+                else:
+                    user = server.get_member_named(arguments[1])
+                    if user == None:
+                        await chat.chat(ch, 'Unable to find user!')
+                    else:
+                        await chat.chat(ch, user.display_name + '\'s unique ID is ' + user.id)
+            
+            elif command == '!settings': # Manages bot settings for each server.
+                if message.server == None:
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
+                elif message.author == message.server.owner:
+                    try:
+                        arguments[1]
+                    except IndexError:
+                        await chat.chat(message.channel, 'Did you provide a setting to change?')
+                    else:
+                        try:
+                            arguments[2]
+                        except IndexError:
+                            await chat.chat(message.channel, 'Did you provide a value to change the setting to?')
+                        else:
+                            if arguments[1].lower() == 'autolike':
+                                if arguments[2].lower() == 'false':
+                                    if message.server.id not in dontReact:
+                                        dontReact.append(message.server.id)
+                                        await chat.chat(message.channel, 'Setting \'autolike\' is now false')
+                                    else:
+                                        await chat.chat(message.channel, 'Setting \'autolike\' is already false')
+                                elif arguments[2].lower() == 'true':
+                                    if message.server.id not in dontReact:
+                                        dontReact.pop(message.server.id)
+                                        await chat.chat(message.channel, 'Setting \'autolike\' is now true')
+                                    else:
+                                        await chat.chat(message.channel, 'Setting \'autolike\' is already true')
+                            if arguments[1].lower() == 'pointsEarned':
+                                try:
+                                    int(arguments[2])
+                                except TypeError:
+                                    await chat.chat('That isnt a valid number!')
+                                else:
+                                    points[message.server.id]['pointsEarned'] = int(arguments[2])
+                else:
+                    await chat.chat(message.channel, 'This is not the command you are looking for!')
+            
+            elif command == '!claimreward':
+                if server == None:
+                    await chat.chat(ch, cfg.noPMcmdRes)
+                    return
+                else:
+                    try:
+                        arguments[1]
+                    except IndexError:
+                        await chat.chat(ch, 'Did you provide a reward to claim?')
+                    else:
+                        if arguments[1] in rewards[server.id]:
+                            if points[server.id][author.id] >= rewards[server.id][arguments[1]]:
+                                points[server.id][author.id] = points[server.id][author.id] - rewards[server.id][arguments[1]]
+                                await chat.chat(ch, 'Succesfully redeemed reward: ' + arguments[1] + ' for ' + str(rewards[server.id][arguments[1]]) + ' points!')
+                                await chat.chat(server.owner, str(author) + ' redeemed reward: ' + arguments[1])
                             else:
-                                await chat.chat(message.channel, 'Setting \'autolike\' is already false')
-                        elif arguments[2].lower() == 'true':
-                            if message.server.id not in dontReact:
-                                dontReact.pop(message.server.id)
-                                await chat.chat(message.channel, 'Setting \'autolike\' is now true')
+                                await chat.chat(ch, 'You dont have enough points for that reward. You need ' + str(rewards[server.id][arguments[1]] - points[server.id][author.id]) + ' more points.')
+                                
+            elif command == '!managerewards':
+                # arg 1 = add/del
+                # arg 2 = reward name
+                # arg 3 = reward cost
+                if message.server == None:
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
+                else:
+                    if author is server.owner or author.id == leo or isAdmin:
+                        if server.id in rewards:
+                            pass
+                        else:
+                            rewards[server.id] = {}
+                    else:
+                        await chat.chat(ch, 'This isn\'t the command you are looking for...')
+                        return
+                    try:
+                        arguments[1]
+                    except IndexError:
+                        await chat.chat(message.channel, 'Did you provide a first argument?')
+                    else:
+                        if arguments[1].lower() in ['del', 'delete', 'remove', 'add', 'create', 'make']:
+                            pass
+                        else:
+                            await chat.chat(ch, 'That isnt a valid argument')
+                            return
+                        try:
+                            arguments[2]
+                        except IndexError:
+                            await chat.chat(ch, 'Did you provide a reward name to add or remove?')
+                        else:
+                            try:
+                                cost = int(arguments[3])
+                            except (IndexError, TypeError):
+                                if arguments[1] in ['del', 'delete', 'remove']:
+                                    if arguments[2] in rewards[server.id]:
+                                        rewards[server.id].pop(arguments[2])
+                                        await chat.chat(ch, 'Removed ' + arguments[2] + ' from the rewards list.')
+                                    else:
+                                        await chat.chat(ch, 'That reward doesnt exist!')
+                                else:
+                                    await chat.chat(ch, 'Did you provide a cost for the reward?')
                             else:
-                                await chat.chat(message.channel, 'Setting \'autolike\' is already true')
+                                if arguments[1].lower() in ['add', 'create', 'make']:
+                                    if arguments[2] in rewards[server.id]:
+                                        await chat.chat(ch, 'That reward already exists!')
+                                    else:
+                                        rewards[server.id][arguments[2]] = cost
+                                        await chat.chat(ch, 'Added ' + arguments[2] + ' to the rewards list.')
+                                elif arguments[1].lower() in ['del', 'delete', 'remove']:
+                                    if arguments[2] in rewards[server.id]:
+                                        rewards[server.id].pop(arguments[2])
+                                        await chat.chat(ch, 'Removed ' + arguments[2] + ' from the rewards list.')
+                                    else:
+                                        await chat.chat(ch, 'That reward doesnt exist!')
+                                
+            elif command == '!gamblepoints' or command == '!gamble': # Gambles points
+                if message.server == None:
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
+                    return
+                    
+                try:
+                    gambling = int(arguments[1])
+                except IndexError:
+                    await chat.chat(message.channel, 'You didn\'t give a number of points to gamble.')
+                except TypeError:
+                    await chat.chat(ch, 'That isn\'t a number!')
+                except ValueError:
+                    await chat.chat(ch, 'That isn\'t a number!')
+                else:
+                    if gambling <= points[message.server.id][message.author.id]:
+                        if gambling >= 1:
+                            await chat.chat(message.channel, 'Gambling ' + str(gambling) + ' points...')
+                            points[message.server.id][message.author.id] -= gambling
+                            
+                            result = random.randint(0,11)
+                            if result in [1,2,3,4,5]:
+                                await asyncio.sleep(5)
+                                await chat.chat(message.channel, message.author.mention + ' You lost ' + str(gambling) + ' points from gambling. You now have ' + str(points[message.server.id][message.author.id]) + ' points! Dont get too greedy!')
+                            elif result in [11]:
+                                await asyncio.sleep(5)
+                                points[message.server.id][message.author.id] += gambling * 10
+                                await chat.chat(message.channel, message.author.mention + ' You earned ' + str(gambling * 10) + ' points from gambling. You now have ' + str(points[message.server.id][message.author.id]) + ' points! Dont get too greedy!')
+                            else:
+                                await asyncio.sleep(5)
+                                points[message.server.id][message.author.id] += gambling * 2
+                                await chat.chat(message.channel, message.author.mention + ' You earned ' + str(gambling) + ' points from gambling. You now have ' + str(points[message.server.id][message.author.id]) + ' points! Dont get too greedy!')
 
+                        else:
+                            await chat.chat(message.channel, 'You can\'t bet zero or negitive points')
+                    else:
+                        await chat.chat(message.channel, 'You don\'t have that many points! You need ' + str(gambling-points[message.server.id][message.author.id]) + ' more points to gamble that amount.')
+            
+            elif command == '!duel':
+                if server == None:
+                    await chat.chat(ch, 'You lost the duel! ' + cfg.noPMcmdRes)
+                else:
+                    if not server.id in awaitingDuel:
+                        awaitingDuel[server.id] = {}
+                        
+                    if author.id in awaitingDuel[server.id]:
+                        await chat.chat(ch, 'You have already requested a duel to someone in this server!')
+                    else:
+                        if awaitingRestart:
+                            await chat.chat(ch, 'The bot is preparing to restart for a patch or update, try again in a few minutes!')
+                            return
+                        try:
+                            int(arguments[1])
+                            duelee = await client.get_user_info(arguments[1])
+                            if duelee == author:
+                                raise ZeroDivisionError
+                            if duelee == client.user:
+                                raise ImportError
+                        except (IndexError, TypeError, ValueError):
+                            await chat.chat(ch, 'Did you provide the ID of a user to duel? If you dont know a users ID, use !id <username>')
+                        except (discord.errors.NotFound):
+                            await chat.chat(ch, 'Unable to find user with that ID')
+                        except ZeroDivisionError:
+                            await chat.chat(ch, 'You lost the duel! You cannot duel yourself.')
+                        except ImportError:
+                            await chat.chat(ch, 'You cannot duel me! I\'ll always win')
+                        else:
+                            try:
+                                int(arguments[2])
+                            except (IndexError, TypeError, ValueError):
+                                await chat.chat(ch, 'Did you provide a number of points to duel over?')
+                            else:
+                                if points[server.id][author.id] >= int(arguments[2]):
+                                    for duel in awaitingDuel[server.id]:
+                                        if awaitingDuel[server.id][duel][1] == arguments[1]:
+                                            await chat.chat(ch, 'Someone else has already send this user a duel request!')
+                                            return
+                                    if int(arguments[2]) > 0:
+                                        try:
+                                            points[server.id][arguments[1]]
+                                        except IndexError:
+                                            points[server.id][arguments[1]] = 0
+                                            
+                                        if points[server.id][arguments[1]] >= int(arguments[2]):
+                                            awaitingDuel[server.id][author.id] = [arguments[1], int(arguments[2])]
+                                            await chat.chat(ch, 'Requesting ' + duelee.mention + ' to duel for ' + arguments[2] + ' points. They have 10 minutes to accept the duel using !acceptduel.')
+                                            points[server.id][author.id] -= int(arguments[2])
+                                            
+                                            await chat.chat(duelee, author.display_name + ' sent you a duel request in ' + server.name + '! Go to that server and type !acceptduel to accept the duel!')
+                                            
+                                            await asyncio.sleep(600)
+                                            if author.id in awaitingDuel[server.id]:
+                                                awaitingDuel[server.id].pop(author.id)
+                                                await chat.chat(ch, duelee.mention + ' did not accept the request in time. You have gotten your points back!')
+                                                points[server.id][author.id] += int(arguments[2])
+                                        else:
+                                            await chat.chat(ch, duelee.display_name + ' doesnt have that many points, they only have ' + str(points[server.id][arguments[1]]) + ' points.')
+                                    else:
+                                        await chat.chat(ch, 'You lost the duel! You can\'t duel over negitive or zero points')
+                                else:
+                                    await chat.chat(ch, 'You lost the duel! You dont have enough points to duel over that much')
+                    
+            elif command == '!acceptduel':
+                if server == None:
+                    await chat.chat(ch, 'You lost the duel! ' + cfg.noPMcmdRes)
+                else:
+                    duelFound = False
+                    for userID in awaitingDuel[server.id]:
+                        if awaitingDuel[server.id][userID][0] == author.id:
+                            duelFound = True
+                            winner = random.randint(1,2)
+                            dueler = await client.get_user_info(userID)
+                            points[server.id][author.id] -= int(awaitingDuel[server.id][userID][1])
+                            
+                            if winner == 1:
+                                points[server.id][author.id] += awaitingDuel[server.id][userID][1]*2
+                                await chat.chat(ch, dueler.mention + ' lost the duel against ' + author.mention + '. The winner earned ' + str(awaitingDuel[server.id][userID][1]) + ' points!')
+                            else:
+                                points[server.id][dueler.id] += awaitingDuel[server.id][userID][1]*2
+                                await chat.chat(ch, dueler.mention + ' won the duel against ' + author.mention + '. The winner earned ' + str(awaitingDuel[server.id][userID][1]) + ' points!')
+                            awaitingDuel[server.id].pop(userID)
+                            break
+                    if duelFound == False:
+                        await chat.chat(ch, 'Unable to find a duel in this server you are part of.')
+                        
+            elif command == '!points': # get the points of a user, or sets the points of another user.
+                if message.server == None:
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
+                    return
+                    
+                try:
+                    arguments[1]
+                except IndexError:
+                    try:
+                        if points[server.id][author.id] > 1000000000:
+                            await chat.chat(message.channel, message.author.mention + ' has ' + str(points[message.server.id][message.author.id]) + ' points! They are currently level ' + str(int(points[server.id][author.id]/1000)) + '! https://www.youtube.com/watch?v=9Deg7VrpHbM')
+                        else:
+                            await chat.chat(message.channel, message.author.mention + ' has ' + str(points[message.server.id][message.author.id]) + ' points! They are currently level ' + str(int(points[server.id][author.id]/1000)) + '!')
+                    except:
+                        try:
+                            points[message.server.id]
+                        except:
+                            points[message.server.id] = {}
+                            points[message.server.id][message.author.id] = 0
+                            await chat.chat(message.channel, message.author.mention + ' has 0 points! They are currently level 0!')
+                        else: 
+                            points[message.server.id][message.author.id] = 0
+                            await chat.chat(message.channel, message.author.mention + ' has 0 points! They are currently level 0!')
+                else:
+                    if arguments[1] == 'set':
+                        if message.author == message.server.owner or message.author.id == "304316646946897920" or message.author.server_permissions.administrator:
+                            try:
+                                arguments[2]
+                            except IndexError:
+                                await chat.chat(message.channel, 'Did you provide a user id to set the points of?')
+                                return
+                            else:
+                                try:
+                                    int(arguments[2])
+                                except (TypeError, ValueError):
+                                    await chat.chat(message.channel, 'Invalid user ID!')
+                                    return
+                                else:
+                                    try:
+                                        newPoints = int(arguments[3])
+                                    except IndexError:
+                                        await chat.chat(message.channel, 'Did you provide a number of points?')
+                                    except ValueError:
+                                        await chat.chat(ch, 'That isnt a number!')
+                                    else:
+                                        try:
+                                            points[message.server.id]
+                                        except IndexError:
+                                            points[message.server.id] = {}
+                                        points[message.server.id][arguments[2]] = newPoints
+                                        user = await client.get_user_info(arguments[2])
+                                        await chat.chat(message.channel, 'User ' + user.mention + ' now has ' + str(points[message.server.id][arguments[2]]) + ' points!')
+                        else:
+                            await chat.chat(message.channel, message.author.mention + ' You cannot use this subcommmand!')
+                    elif arguments[1] == 'send':
+                        try:
+                            int(arguments[2])
+                        except IndexError:
+                            await chat.chat(ch, 'Did you provide a user to send points to?')
+                        except ValueError:
+                            await chat.chat(ch, 'That isnt a valid user ID')
+                        else:
+                            try:
+                                int(arguments[3])
+                            except IndexError:
+                                await chat.chat(ch, 'Did you provide an amount of points to give?')
+                            except ValueError:
+                                await chat.chat(ch, 'That isnt a valid number!')
+                            else:
+                                receiver = server.get_member(arguments[2])
+                                if receiver == None:
+                                    await chat.chat(ch, 'There is no user in this server with that ID')
+                                else:
+                                    if receiver.id in points[server.id]:
+                                        pass
+                                    else:
+                                        points[server.id][receiver.id] = 0
+                                        
+                                    if points[server.id][author.id] >= int(arguments[3]):
+                                        points[server.id][author.id] -= int(arguments[3])
+                                        points[server.id][arguments[2]] += int(arguments[3])
+                                        await chat.chat(ch, author.mention + ' gave ' + arguments[3] + ' points to ' +  receiver.mention)
+                                    else:
+                                        await chat.chat(ch, 'You don\'t have that many points to give!')
+                    else:
+                        try:
+                            int(arguments[1])
+                        except IndexError:
+                            await chat.chat(message.channel, 'Did you provide a user id to get the points of?')
+                            return
+                        except ValueError:
+                            await chat.chat(message.channel, 'That isnt a valid user ID!')
+                        else:
+                            user = server.get_member(arguments[1])
+                            if user == None:
+                                await chat.chat(ch, 'Couldn\'t find the user with that ID.')
+                            else:
+                                if user.id in points[server.id]:
+                                    await chat.chat(message.channel, 'User ' + user.mention + ' has ' + str(points[message.server.id][user.id]) + ' points!' + 'They are currently level ' + str(int(points[server.id][users.id]/1000)) + '!')
+                                else:
+                                    points[server.id][user.id] = 0
+                                    await chat.chat(ch, 'User ' + user.mention + ' has 0 points! They are currently level ' + str(int(points[server.id][user.id]/1000)) + '!')
+                                
             elif command == '!song': # plays a song in the voice channel that the user is in.
                 #client.delete_message(message)
-                self = Music
                 if message.server == None:
-                    await chat.chat('This command cannot be used in Private Messages.')
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
+                    return
                 else:
+                    self = Music
+                    state = self.get_voice_state(Music, message.server)
                     try:
                         arguments[1]
                     except IndexError:
                         await chat.chat(message.channel, 'Did you provide any arguments?')
                         return
                     if arguments[1].lower() == 'join':
-                        try:##### move functions to IF statements in !song in discordBot.py
+                        try:
                             await Music.create_voice_client(message.author.voiceChannel)
                         except discord.ClientException:
-                            await chat.chat(message.server, 'Already in a voice channel...')
+                            await chat.chat(message.channel, 'Already in a voice channel...')
                         except discord.InvalidArgument:
-                            await chat.chat(message.server, 'This is not a voice channel...')
+                            await chat.chat(message.channel, 'This is not a voice channel...')
                         else:
-                            await chat.chat(message.server, 'Ready to play audio in ' + message.author.voiceChannel)
+                            await chat.chat(message.channel, 'Ready to play audio in ' + message.author.voiceChannel)
+
+                    elif arguments[1].lower() == 'queue':
+                        #print(state.songs)
+                        await chat.chat(message.channel, 'Queue Entries: \n' + state.songs)
+
+
                     elif arguments[1].lower() == 'summon':
                         """Summons the bot to join your voice channel."""
                         summoned_channel = message.author.voice_channel
                         if summoned_channel is None:
-                            await chat.chat(message.server, 'You are not in a voice channel.')
+                            await chat.chat(message.channel, 'You are not in a voice channel.')
                             return
 
-                        state = self.get_voice_state(Music, message.server)
                         if state.voice is None:
                             state.voice = await client.join_voice_channel(summoned_channel)
                         else:
@@ -304,30 +877,41 @@ async def on_message(message):
                         return
 
                     elif arguments[1].lower() == 'play':
-                        """Plays a song.
-                        If there is a song currently in the queue, then it is
-                        queued until the next song is done playing.
-                        This command automatically searches as well from YouTube.
-                        The list of supported sites can be found here:
-                        https://rg3.github.io/youtube-dl/supportedsites.html
-                        """
-                        state = self.get_voice_state(Music, message.server)
+                        """Plays a song. If there is a song currently in the queue, then it isqueued until the next song is done playing.This command automatically searches as well from YouTube.The list of supported sites can be found here:
+                        https://rg3.github.io/youtube-dl/supportedsites.html"""
                         opts = {
                             'default_search': 'auto',
                             'quiet': True,
-                        }
+                            }
+                        try:
+                            points[message.server.id][message.author.id]
+                        except IndexError:
+                            try:
+                                points[message.server.id]
+                            except IndexError:
+                                points[message.server.id] = {}
+                            
+                            points[message.server.id][message.author.id] = 0
+                            
+                            await chat.chat(message.channel, message.author.mention + ' You do not have enough points to request a song! You need 100 points, you have 0 points')
+                            return
+                        else:
+                            if points[message.server.id][message.author.id] >= 100:
+                                pass
+                            else:
+                                await chat.chat(message.channel, message.author.mention + ' You do not have enough points to request a song! You need 100 points, you have ' + str(points[message.server.id][message.author.id]))
+                                return
                         try:
                             arguments[2]
                         except IndexError:
-                            await chat.chat(message.server, 'Did you provide a song to listen to?')
+                            await chat.chat(message.channel, 'Did you provide a song to listen to?')
                             return
 
                         summoned_channel = message.author.voice_channel
                         if summoned_channel is None:
-                            await chat.chat(message.server, 'You are not in a voice channel.')
+                            await chat.chat(message.channel, 'You are not in a voice channel.')
                             return
 
-                        state = self.get_voice_state(Music, message.server)
                         if state.voice is None:
                             state.voice = await client.join_voice_channel(summoned_channel)
                         else:
@@ -341,38 +925,39 @@ async def on_message(message):
                         else:
                             player.volume = 0.6
                             entry = VoiceEntry(message, player)
-                            await chat.chat(message.server, 'Enqueued ' + str(entry))
+                            await chat.chat(message.channel, 'Enqueued ' + str(entry) + '. You now have ' + str(points[message.server.id][message.author.id] - 100) + ' points left.')
                             await state.songs.put(entry)
+                            points[message.server.id][message.author.id] -= 100
 
                     elif arguments[1].lower() == 'volume':
                         """Sets the volume of the currently playing song."""
+                        
+                        try:
+                            arguments[2]
+                        except IndexError:
+                            await chat.chat('You didnt provide a volume level')
+                            return
 
-                        state = self.get_voice_state(Music, message.server)
                         if state.is_playing():
                             player = state.player
-                            player.volume = value / 100
-                            await chat.chat(message.server, 'Set the volume to {:.0%}'.format(player.volume))
+                            player.volume = arguments[2] / 100
+                            await chat.chat(message.channel, 'Set the volume to {:.0%}'.format(player.volume))
 
                     elif arguments[1].lower() == 'pause':
                         """Pauses the currently played song."""
-                        state = self.get_voice_state(Music, message.server)
                         if state.is_playing():
                             player = state.player
                             player.pause()
 
                     elif arguments[1].lower() == 'resume':
                         """Resumes the currently played song."""
-                        state = self.get_voice_state(Music, message.server)
                         if state.is_playing():
                             player = state.player
                             player.resume()
 
                     elif arguments[1].lower() == 'stop':
-                        """Stops playing audio and leaves the voice channel.
-                        This also clears the queue.
-                        """
+                        """Stops playing audio and leaves the voice channel. This also clears the queue."""
                         server = message.server
-                        state = self.get_voice_state(Music, message.server)
 
                         if state.is_playing():
                             player = state.player
@@ -387,63 +972,78 @@ async def on_message(message):
 
 
                     elif arguments[1].lower() == 'skip':
-                        """Vote to skip a song. The song requester can automatically skip.
-                        3 skip votes are needed for the song to be skipped.
-                        """
+                        """Vote to skip a song. The song requester can automatically skip. 3 skip votes are needed for the song to be skipped."""
 
-                        state = self.get_voice_state(Music, message.server)
                         if not state.is_playing():
-                            await chat.chat(message.server, 'Not playing any music right now...')
+                            await chat.chat(message.channel, 'Not playing any music right now...')
                             return
 
                         voter = message.author
                         if voter == state.current.requester:
-                            await chat.chat(message.server, 'Requester requested skipping song...')
+                            await chat.chat(message.channel, 'Requester requested skipping song...')
                             state.skip()
                         elif voter.id not in state.skip_votes:
-                            state.skip_votes.add(voter.id)
-                            total_votes = len(state.skip_votes)
-                            if total_votes >= 3:
-                                await chat.chat(message.server, 'Skip vote passed, skipping song...')
-                                state.skip()
+                            if points[message.server.id][message.author.id] >= 15:
+                                state.skip_votes.add(voter.id)
+                                total_votes = len(state.skip_votes)
+                                if total_votes >= 3:
+                                    await chat.chat(message.channel, 'Skip vote passed, skipping song...')
+                                    state.skip()
+                                else:
+                                    await chat.chat(message.channel, 'Skip vote added, currently at [{}/3]'.format(total_votes))
                             else:
-                                await chat.chat(message.server, 'Skip vote added, currently at [{}/3]'.format(total_votes))
+                                await chat.chat(message.channel, 'You need at least 15 points to skip vote a song. You have {} points'.format(points[message.server.id][message.author.id]))
                         else:
-                            await chat.chat(message.server, 'You have already voted to skip this song.')
+                            await chat.chat(message.channel, 'You have already voted to skip this song.')
 
                     elif arguments[1].lower() == 'playing':
                         """Shows info about the currently played song."""
 
-                        state = self.get_voice_state(Music, message.server)
                         if state.current is None:
-                            await chat.chat(message.server, 'Not playing anything.')
+                            await chat.chat(message.channel, 'Not playing anything.')
                         else:
                             skip_count = len(state.skip_votes)
-                            await chat.chat(message.server, 'Now playing {} [skips: {}/3]'.format(state.current, skip_count))
-
+                            await chat.chat(message.channel, 'Now playing {} [skips: {}/3]'.format(state.current, skip_count))
+                            
             elif command == '!version': # says bot version in chat
                 await chat.chat(message.channel, 'Bot Version: ' + cfg.version)
-
-            elif command == '!age':
+                
+            elif command == '!removechannel':
+                if message.server == None:
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
+                    return
+                    
+                if message.server.id not in drtf:
+                    drtf[message.server.id] = []
+                    
+                if message.author == message.server.owner or message.author.id == '304316646946897920' or message.author.server_permissions.administrator:
+                    msg = await chat.chat(message.channel, 'Removing this channel from channels to respond to. This message will be deleted in 5 seconds...')
+                    drtf[message.server.id].append(message.channel.id)
+                    await asyncio.sleep(5)
+                    await client.delete_message(msg)
+                    with open('dontRespondToMessages.json', 'w') as f:
+                        json.dump(drtf, f)
+                    
+            elif command == '!age': # says that a user is an age between 0 and 100 years old.
                 try:
                     await chat.chat(message.channel, arguments[1] + ' is ' + str(random.randint(0, 100)) + ' years old :Kappa:')
                 except IndexError:
                     await chat.chat(message.channel, str(message.author) + ' is ' + str(random.randint(0, 100)) + ' years old :Kappa:')
 
-            elif command == '!hug':
+            elif command == '!hug': # hugs someone
                 try:
                     await chat.me(message.channel, 'makes ' + str(message.author) + ' hug ' + arguments[1] + '! HUGS! TwitchUnity bleedPurple <3')
                 except IndexError:
                     await chat.me(message.channel, 'hugs ' + str(message.author) + '! HUGS!!!')
 
-            elif command == '!comhelp':
+            elif command == '!comhelp': # help for custom commands
                 await chat.chat(message.channel, 'You can use "{user}" and it will mention the user who sends the message, and "{time}" will put the time the users message was sent')
 
-            elif command == '!addcom' or command == '!comadd':
+            elif command == '!addcom' or command == '!comadd': # adds a custom command
                 if message.server == None:
-                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
-                if message.author.id in customCommandManagers or message.author == message.server.owner:
+                if message.author.id in customCommandManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
                     if message.content.count(space) >= 2:
                         try:
                             newargs = arguments[2:]
@@ -474,11 +1074,11 @@ async def on_message(message):
                 else:
                     await chat.chat(message.channel, 'You dont have permission to use that command!')
 
-            elif command == '!delcom' or command == '!comdel':
+            elif command == '!delcom' or command == '!comdel': # removes a custom command
                 if message.server == None:
-                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
-                if message.author.id in customCommandManagers or message.author == message.server.owner:
+                if message.author.id in customCommandManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
                     if message.content.count(space) == 1:
                         try:
                             commanddel = arguments[1]
@@ -508,11 +1108,11 @@ async def on_message(message):
                 else:
                     await chat.chat(message.channel, 'You dont have permission to use that command!')
 
-            elif command == '!editcom' or command == '!comedit':
+            elif command == '!editcom' or command == '!comedit': # edits a custom command
                 if message.server == None:
-                    await chat.chat(message.channel, 'This command cannot be used in Private Messages')
+                    await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
-                if message.author.id in customCommandManagers or message.author == message.server.owner:
+                if message.author.id in customCommandManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
                     if message.content.count(space) >= 2:
                         try:
                             newargs = arguments[2:]
@@ -541,11 +1141,7 @@ async def on_message(message):
                 else:
                     await chat.chat(message.channel, 'You dont have permission to use that command!')
 
-                # END CUSTOM COMMANDS -----------------------------------------
-
-                # QUOTES ----------------------------------------------------
-
-            elif command == '!quotes' or command == '!quote':
+            elif command == '!quotes' or command == '!quote': # manages quotes
                 if message.server == None:
                     await chat.chat(message.channel, 'This command cannot be used in Private Messages')
                     return
@@ -556,7 +1152,7 @@ async def on_message(message):
 
                 try:
                     if arguments[1].lower() == 'add':
-                        if message.author.id in quoteManagers or message.author == message.server.owner:
+                        if message.author.id in quoteManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
                             try:
                                 newargs = arguments[2:]
                                 newQuote = ' '.join(newargs)
@@ -586,7 +1182,7 @@ async def on_message(message):
                         else:
                             await chat.chat(message.channel, 'You dont have permission to add a quote!')
                     elif arguments[1].lower() == 'del':
-                        if message.author.id in quoteManagers or message.author == message.server.owner:
+                        if message.author.id in quoteManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
                             try:
                                 quotedel = arguments[2]
 
@@ -621,34 +1217,51 @@ async def on_message(message):
                         await chat.chat(message.channel, 'Quote #' + str(randomQuote) + ': ' + quotesList[message.server.id][str(randomQuote)])
                     except (IndexError, KeyError):
                         await chat.chat(message.channel, 'There are no quotes yet!')
-
+                
             else:
-                if message.server == None:
-                    return
-                if message.server.id not in dontReact and botIsOn:
-                    await client.add_reaction(message, '👍')
-                    await client.add_reaction(message, '👎')
-                try:
-                    for l in range(11):
-                        try:
-                            arguments[l]
-                        except IndexError:
-                            arguments.append('')
-                    for key in commandsList[str(message.server.id)]:
-                        if message.content.startswith(key):
-                            await chat.chat(message.channel, str(commandsList[str(message.server.id)].get(key)).format(arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9], user = str(message.author.mention), time=str(message.timestamp.time()).split('.')[0]))
-                except KeyError:
+                if server == None:
                     pass
-
+                else:
+                    try:
+                        for l in range(11):
+                            try:
+                                arguments[l]
+                            except IndexError:
+                                arguments.append('')
+                        for key in commandsList[str(message.server.id)]:
+                            if message.content.startswith(key):
+                                await chat.chat(message.channel, str(commandsList[str(message.server.id)].get(key)).format(arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9], user = str(message.author.mention), time=str(message.timestamp.time()).split('.')[0]))
+                                commandUsed = True
+                                break
+                    except KeyError:
+                        if message.server == None:
+                            commandUsed = False
+                        else:
+                            if message.server.id in dontReact:
+                                await client.add_reaction(message, '👍')
+                                await client.add_reaction(message, '👎')
+                            commandUsed = False
+                        
+            if commandUsed == True:            
+                pass
+                    
+    except discord.errors.Forbidden:
+        print('The bot is not allowed to send messages to this channel')
     except Exception as err:
         try:
             tb = traceback.format_exc()
             await chat.chat(errorChannel, '\nError in server ' + str(message.server) + '\n' + tb)
-        except:
-            raise
+            await chat.chat(message.channel, 'An error occured while running this command! This error has been logged and will hopefully get fixed!')
+        except discord.errors.Forbidden:
+            print('The bot is not allowed to send messages to this channel')
+    
 @client.event
 async def on_ready():
-    os.system('title ' + cfg.version)
+    print('Loading TheDerpyMemeBotDiscord files...')
+    print('Creating Points Loop...')
+    pointLoopT = threading.Thread(target=pointLoop)
+    print('Starting points loop...')
+    pointLoopT.start()
     print('\nLoading Custom Commands Database...')
     getCustomCommands()
     print('Loaded Custom Commands Database!\nLoading Quotes Database...')
@@ -664,16 +1277,46 @@ async def on_ready():
     print('----------------------------------')
     ##chat('main-chat', 'The Derpy Meme Bot version ' + cfg.version + ' is now running!')
 
-    await client.change_presence(game=discord.Game(name=cfg.version, type=1))
+    await client.change_presence(game=discord.Game(name=cfg.version, url='https://github.com/LeotomasMC/TheDerpyMemeBotDiscord', type=1))
 
     hard_coded_channel = discord.Object(id="332601647870115842")
-    await chat.chat(hard_coded_channel, 'The Derpy Meme Bot version ' + cfg.version + ' is now running!')
+   # await chat.chat(hard_coded_channel, 'The Derpy Meme Bot version ' + cfg.version + ' is now running!')
+    print('\n')
 
+def banUser(userID, tpe='ban', way='add'):
+    if tpe not in ['ban', 'warn']:
+        tpe = 'ban'
+    if way not in ['add', 'del']:
+        way = 'add'
+    
+    if tpe == 'ban':
+        if way == 'add':
+            bannedUsers.append(str(userID))
+            return 'Added user to ban list'
+        else:
+            bannedUsers.remove(str(userID))
+            return 'Removed user from ban list'
+    else:
+        if way == 'add':
+            warnUsers.append(str(userID))
+            return 'Added user to warn list'
+        else:
+            warnUsers.remove(str(userID))
+            return 'Removed user from warn list'
+        
 def runBot():
     #client.loop.create_task(checkStreamStatus())
     #client.add_cog(Music(bot))
     client.run(TOKEN)
-
+    
+    loop = asyncio.get_event_loop()
+    # Blocking call which returns when the hello_world() coroutine is done
+    loop.run_until_complete(consoleChat(serverID, message))
+    loop.close()
+    
 botT = threading.Thread(target=runBot)
 if __name__ == '__main__':
+    os.system('title ' + cfg.version)
+    with open("ChatLog.txt", "a") as f:
+            f.write('\n'*3 + ('='*97 + '\n')*2 + '===---+(-)' + ' '*30 + 'New TDMB Session!' + ' '*30 + '(-)+---===\n' + ('='*97 + '\n')*2)
     botT.start()

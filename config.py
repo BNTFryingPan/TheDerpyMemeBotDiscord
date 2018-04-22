@@ -2,12 +2,12 @@
 #---------------
 
 ## \/ DO NOT CHANGE THIS \/
-botType = "TheDerpyMemeBot"
+botType = "TDMB"
 abr = "Beta"
-ver = "5.0.0"
-verName = "Discord Songs Command Update! PogChamp"
+ver = "9.0.5"
+verName = "Point Duels!"
 
-nextUpdate = "Something? Maybe Release 1.0 PogChamp"
+nextUpdate = ""
 
 version = botType + ' ' + abr + ' ' + ver
 ## /\ DO NOT CHANGE THIS /\
@@ -22,3 +22,9 @@ clientSecret = "clientSecret"
 
 username = "TheDerpyMemeBot"
 token = "token"
+
+
+# Discord Bot Easy Settings
+
+# the message to respond with, if a command cannot be used in Private Messages (DMs, PMs, Whispers, whatever you want to call them) (Deafault: "This command cannot be used in Private Messages!")
+noPMcmdRes = 'This command cannot be used in Private Messages!'
