@@ -3,9 +3,9 @@
 
 ## \/ DO NOT CHANGE THIS \/
 botType = "TDMB"
-abr = "Beta"
-ver = "9.0.5"
-verName = "Point Duels!"
+abr = "Release"
+ver = "1.0"
+verName = "Release!!!!!!!!! PogChamp"
 
 nextUpdate = ""
 
