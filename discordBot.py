@@ -332,11 +332,12 @@ async def on_message(message):
                 else:
                     f.write((str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': ' + str(message.clean_content)).translate(unicode))
         except UnicodeEncodeError:
-            with open('ChatLog.txt', 'a') as f:
-                if message.server == None:
-                    f.write(str(message.timestamp.time()).split('.')[0] + ': ' + str(message.channel) + ' >> ' + str(message.author) + ': a message that contians unsupported unicode characters!')
-                else:
-                    f.write((str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': a message that contians unsupported unicode characters!'))
+            pass
+            # with open('ChatLog.txt', 'a') as f:
+                # if message.server == None:
+                    # f.write(str(message.timestamp.time()).split('.')[0] + ': ' + str(message.channel) + ' >> ' + str(message.author) + ': a message that contians unsupported unicode characters!')
+                # else:
+                    # f.write((str(message.timestamp.time()).split('.')[0] + ': [' + str(message.server) + '] #' + str(message.channel) + ' >> ' + str(message.author) + ': a message that contians unsupported unicode characters!'))
 
         # we do not want the bot to reply to itself
         if message.author == client.user:
@@ -398,6 +399,7 @@ async def on_message(message):
 
         elif command == '!error': # forces a DivisionByZero error
             if message.author.id == "304316646946897920":
+                await chat.chat('Raising a ZeroDivisionError on request!')
                 raise ZeroDivisionError('Error raised on request')
             else:
                 await chat.chat(message.channel, 'This isn\'t the command you are looking for...')
@@ -1318,7 +1320,7 @@ async def on_message(message):
         try:
             tb = traceback.format_exc()
             await chat.chat(errorChannel, '\nError in server ' + str(message.server) + '\n' + tb)
-            await chat.chat(message.channel, 'An error occured while running this command! This error has been logged and will hopefully get fixed!')
+            await chat.chat(message.channel, 'An error occured while running this command! ' + str(err) + ' This error has been logged and will hopefully get fixed!')
         except discord.errors.Forbidden:
             print('The bot is not allowed to send messages to this channel')
     

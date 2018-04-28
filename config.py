@@ -4,7 +4,7 @@
 ## \/ DO NOT CHANGE THIS \/
 botType = "TDMB"
 abr = "Release"
-ver = "1.0"
+ver = "1.0.2"
 verName = "Release!!!!!!!!! PogChamp"
 
 nextUpdate = ""
