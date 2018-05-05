@@ -12,6 +12,7 @@ if True:
     import random
 
     from discord.ext import commands
+    import schedule
 
 ## Everything Else
 if True:
@@ -28,12 +29,11 @@ if True:
     sendMessages = True
     errorChannel = discord.Object(id="420918104491687936") #error channel ID in my discord server so i can see the traceback of errors when i dont have access to the shell window
     awaitingRestart = False
-    
-    customCommandManagers = ["304316646946897920", "156128628726300673"] # ids of users who can add/edit/delete custom commands
-    quoteManagers = ["304316646946897920", "156128628726300673"] # people who can manage quotes, will change soon
     dontReact = []
     drtf = {}
     space = ' '
+    
+    awaitingRestart = False
 
     points = {}
     songQueue = {}
@@ -93,7 +93,7 @@ def getDRTMFile():
     with open('dontRespondToMessages.json') as f:
         drtf = json.load(f)
         
-def pointLoop():
+async def pointLoop():
     global points
     global rewards
     global botIsOn
@@ -112,14 +112,35 @@ def pointLoop():
         
     else:    
         print('Loaded points file. Starting loop')
-        while pointLoop:
+        while doPointLoop:
             if botIsOn:
-                for server in points:
-                    for member in points[server]:
-                        if member == 'pointsEarned':
-                            pass
+                for server in client.servers:
+                    if server.if not in points:
+                        points[server.id] = {}
+                        points[server.id]['pointsEarned'] = 10
+                    for member in server.members:
+                        if member.id not in points[server.id]:
+                            points[server.id][member.id] = 0
+                            print('Added ' + str(member) + ' to points list in ' + str(server))
                         else:
-                            points[server][member] += points[server]['pointsEarned']
+                            if member.status == discord.Status.offline or member.status == discord.Status.invisible:
+                                pass
+                            elif member.status == discord.Status.dnd or member.status == discord.Status.do_not_disturb or member.status == discord.Status.idle:
+                                if points[server.id]['pointsEarned'] == 0:
+                                    pass
+                                elif points[server.id]['pointsEarned'] == 1:
+                                    points[server.id][member.id] += 1
+                                else:
+                                    points[server.id][member.id] += math.floor(points[server.id]['pointsEarned']/2)
+                                    
+                            elif member.status == discord.Status.online:
+                                points[server.id][member.id] += points[server.id]['pointsEarned']
+                            
+                            else:
+                                await chat.chat(errorChannel, 'User ' + member.display_name + ' has an unknown status of ' + str(member.status))
+                    
+                            
+                            
                 with open('points.json', 'w') as pointDatabase:
                     json.dump(points, pointDatabase)
                 with open('rewards.json', 'w') as rewDb:
@@ -288,12 +309,23 @@ async def checkStreamStatus():
                 
                 time.sleep(60)
 
+def restart():
+    global botIsOn
+    global awaitingRestart
+    awaitingRestart = True
+    botIsOn = False
+    print('Restarting computer in 60 seconds...')
+    time.sleep(60)
+    #await client.logout()
+    os.system('shutdown /r /c \'TDMB is restarting your computer...\'')
+    
+    
 @client.event
 async def on_message(message):
     global botIsOn
     global errorChannel
-    global customCommandManagers
-    global quoteManagers
+    #global customCommandManagers
+    #global quoteManagers
     global space
     global globalCommands
     global commandsList
@@ -488,6 +520,7 @@ async def on_message(message):
                     return
                 elif author.id in warnUsers:
                     await chat.chat(ch, 'Please watch how many commands you are using!')
+                    warnUsers.remove(author.id)
                     
             if message.server == None:
                 pass
@@ -744,11 +777,38 @@ async def on_message(message):
                                             
                                             await chat.chat(duelee, author.display_name + ' sent you a duel request in ' + server.name + '! Go to that server and type !acceptduel to accept the duel!')
                                             
-                                            await asyncio.sleep(600)
-                                            if author.id in awaitingDuel[server.id]:
-                                                awaitingDuel[server.id].pop(author.id)
-                                                await chat.chat(ch, duelee.mention + ' did not accept the request in time. You have gotten your points back!')
-                                                points[server.id][author.id] += int(arguments[2])
+                                            def check(msg):
+                                                return msg.content.lower().startswith('!acceptduel')
+                                                
+                                            duelAcceptedMsg = await wait_for_message(timeout=600, author=duelee, channel=channel, check=check)
+                                            if duelAcceptedMsg == None:
+                                                await chat.chat(ch, author.mention + ', ' + duelee.display_name + ' did not accept the duel in time. You have gotten your points back!')
+                                            else:
+                                                duelFound = False
+                                                for userID in awaitingDuel[server.id]:
+                                                    if awaitingDuel[server.id][userID][0] == author.id:
+                                                        duelFound = True
+                                                        winner = random.randint(1,2)
+                                                        dueler = await client.get_user_info(userID)
+                                                        points[server.id][author.id] -= int(awaitingDuel[server.id][userID][1])
+                                                        
+                                                        if winner == 1:
+                                                            points[server.id][author.id] += awaitingDuel[server.id][userID][1]*2
+                                                            await chat.chat(ch, dueler.mention + ' lost the duel against ' + author.mention + '. The winner earned ' + str(awaitingDuel[server.id][userID][1]) + ' points!')
+                                                        else:
+                                                            points[server.id][dueler.id] += awaitingDuel[server.id][userID][1]*2
+                                                            await chat.chat(ch, dueler.mention + ' won the duel against ' + author.mention + '. The winner earned ' + str(awaitingDuel[server.id][userID][1]) + ' points!')
+                                                        awaitingDuel[server.id].pop(userID)
+                                                        break
+                                                if duelFound == False:
+                                                    await chat.chat(ch, 'Unable to find a duel in this server you are part of.')
+                                                
+                                                
+                                            # await asyncio.sleep(600)
+                                            # if author.id in awaitingDuel[server.id]:
+                                                # awaitingDuel[server.id].pop(author.id)
+                                                # await chat.chat(ch, duelee.mention + ' did not accept the request in time. You have gotten your points back!')
+                                                # points[server.id][author.id] += int(arguments[2])
                                         else:
                                             await chat.chat(ch, duelee.display_name + ' doesnt have that many points, they only have ' + str(points[server.id][arguments[1]]) + ' points.')
                                     else:
@@ -757,6 +817,7 @@ async def on_message(message):
                                     await chat.chat(ch, 'You lost the duel! You don\'t have enough points to duel over that much')
                     
             elif command == '!acceptduel': # accepts a duel request if you have one.
+                return
                 if server == None:
                     await chat.chat(ch, 'You lost the duel! ' + cfg.noPMcmdRes)
                 else:
@@ -1069,6 +1130,20 @@ async def on_message(message):
             elif command == '!version': # says bot version in chat
                 await chat.chat(message.channel, 'Bot Version: ' + cfg.version)
                 
+            elif command == '!hostbattery': # says the hosts computers batter level. Useful if hosting on a laptop, or the like
+                from plyer import battery
+                try:
+                    batt = battery.status
+                except OSError:
+                    await chat.chat(ch, 'Unable to get host battery information.')
+                except NotImplementedError:
+                    await chat.chat(ch, 'There is no support for battery information on the host\'s OS')
+                if batt['isCharging']:
+                    await chat.chat(ch, 'The host is currently charging, and is at ' + str(batt['percentage']) + '%')
+                else:
+                    await chat.chat(ch, 'The host is not currently charging, and is at ' + str(batt['percentage']) + '%')
+                #await chat.chat(message.channel, 'The bots current host\'s battery state is: ' + str(battery.status))
+                
             elif command == '!removechannel': # stops the bot from sending messages to the channel this was used in
                 if message.server == None:
                     await chat.chat(message.channel, cfg.noPMcmdRes)
@@ -1106,7 +1181,7 @@ async def on_message(message):
                 if message.server == None:
                     await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
-                if message.author.id in customCommandManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
+                if message.author.id == leo or message.author == message.server.owner or message.author.server_permissions.administrator:
                     if message.content.count(space) >= 2:
                         try:
                             newargs = arguments[2:]
@@ -1141,7 +1216,7 @@ async def on_message(message):
                 if message.server == None:
                     await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
-                if author.id in customCommandManagers or author == server.owner or isAdmin:
+                if author.id == leo or author == server.owner or isAdmin:
                     if message.content.count(space) == 1:
                         try:
                             commanddel = arguments[1]
@@ -1175,7 +1250,7 @@ async def on_message(message):
                 if message.server == None:
                     await chat.chat(message.channel, cfg.noPMcmdRes)
                     return
-                if message.author.id in customCommandManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
+                if message.author.id == leo or message.author == message.server.owner or message.author.server_permissions.administrator:
                     if message.content.count(space) >= 2:
                         try:
                             newargs = arguments[2:]
@@ -1219,7 +1294,7 @@ async def on_message(message):
 
                 try:
                     if arguments[1].lower() == 'add':
-                        if message.author.id in quoteManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
+                        if message.author == message.server.owner or message.author.server_permissions.administrator or author.id == leo:
                             try:
                                 newargs = arguments[2:]
                                 newQuote = ' '.join(newargs)
@@ -1249,7 +1324,7 @@ async def on_message(message):
                         else:
                             await chat.chat(message.channel, 'You don\'t have permission to add a quote!')
                     elif arguments[1].lower() == 'del':
-                        if message.author.id in quoteManagers or message.author == message.server.owner or message.author.server_permissions.administrator:
+                        if message.author.id == leo or message.author == message.server.owner or message.author.server_permissions.administrator:
                             try:
                                 quotedel = arguments[2]
 
@@ -1347,45 +1422,37 @@ async def on_ready():
             pass
         else:
             drtf[server.id] = []
-        if server.id in points:
-            pass
-        else:
+        if server.id not in points:
             points[server.id] = {}
             points[server.id]['pointsEarned'] = 1
             print('Added ' + str(server) + ' to the points list')
         for member in server.members:
-            if member.id in cooldowns:
-                pass
-            else:
-                cooldowns[member.id] = []
-                
+            if member.id not in cooldowns:
+                cooldowns[member.id] = []   
             if member == client.user:
-                #points[server.id].remove(client.user.id)
                 pass
-            if member.id in points[server.id]:
-                pass
-            else:
+            if member.id not in points[server.id]:
                 points[server.id][member.id] = 0
                 print('Added ' + str(member) + ' to points list in ' + str(server))
 
-    def banUser(userID, tpe='ban', way='add'):
-        if tpe not in ['ban', 'warn']:
-            tpe = 'ban'
-        if way not in ['add', 'del']:
-            way = 'add'
-        
-        if tpe == 'ban':
-            if way == 'add':
-                bannedUsers.append(str(userID))
-                with open('bannedUsers.json') as f:
-                    json.dump(bannedUsers, f)
-                return 'Added user to ban list'
-            else:
-                bannedUsers.remove(str(userID))
-                with open('bannedUsers.json') as f:
-                    json.dump(bannedUsers, f)
-                return 'Removed user from ban list'
+def banUser(userID, tpe='ban', way='add'):
+    if tpe not in ['ban', 'warn']:
+        tpe = 'ban'
+    if way not in ['add', 'del']:
+        way = 'add'
+    
+    if tpe == 'ban':
+        if way == 'add':
+            bannedUsers.append(str(userID))
+            with open('bannedUsers.json') as f:
+                json.dump(bannedUsers, f)
+            return 'Added user to ban list'
         else:
+            bannedUsers.remove(str(userID))
+            with open('bannedUsers.json') as f:
+                json.dump(bannedUsers, f)
+            return 'Removed user from ban list'
+    else:
             if way == 'add':
                 warnUsers.append(str(userID))
                 with open('warnUsers.json') as f:
@@ -1398,28 +1465,28 @@ async def on_ready():
                 return 'Removed user from warn list'
         
 def runBot():
-    #client.loop.create_task(checkStreamStatus())
+    client.loop.create_task(pointLoop)
     #client.add_cog(Music(bot))
-    print('Loading TheDerpyMemeBotDiscord files...')
-    print('Creating Points Loop...')
-    pointLoopT = threading.Thread(target=pointLoop)
-    print('Starting points loop...')
-    pointLoopT.start()
-    print('\nLoading Custom Commands Database...')
-    getCustomCommands()
-    print('Loaded Custom Commands Database!\nLoading Quotes Database...')
-    getQuotes()
-    print('Loaded Quotes Database!\nLoading Banned Users List...')
-    getBannedUsers()
-    print('Loaded Banned Users List!')
     
-    print('Starting Bot...')
-    client.run(TOKEN)
-    
-    loop = asyncio.get_event_loop()
-    # Blocking call which returns when the hello_world() coroutine is done
-    loop.run_until_complete(consoleChat(serverID, message))
-    loop.close()
+    if True:
+        print('Loading TheDerpyMemeBotDiscord files...')
+        #print('Creating Points Loop...')
+        #pointLoopT = threading.Thread(target=pointLoop)
+        #print('Starting points loop...')
+        #pointLoopT.start()
+        print('\nLoading Custom Commands Database...')
+        getCustomCommands()
+        print('Loaded Custom Commands Database!\nLoading Quotes Database...')
+        getQuotes()
+        print('Loaded Quotes Database!\nLoading Banned Users List...')
+        getBannedUsers()
+        print('Loaded Banned Users List!')
+        
+        print('Scheduling restart command...')
+        schedule.every().day.at('00:00').do(restart)
+        
+        print('Starting Bot...')
+        client.run(TOKEN)
     
 if __name__ == '__main__':
     botT = threading.Thread(target=runBot)
