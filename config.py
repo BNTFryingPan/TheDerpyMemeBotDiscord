@@ -4,10 +4,10 @@
 ## \/ DO NOT CHANGE THIS \/
 botType = "TDMB"
 abr = "Release"
-ver = "1.1"
-verName = "Midnightly restarts, and better points system"
+ver = "1.2"
+verName = "Points improvement, and SLOTS!"
 
-nextUpdate = "Self-Updating Host"
+nextUpdate = "Self-Updating Host? or random new features"
 
 version = botType + ' ' + abr + ' ' + ver
 ## /\ DO NOT CHANGE THIS /\
