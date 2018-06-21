@@ -305,20 +305,7 @@ async def on_member_join(member):
     pass
     
 async def checkStreamStatus():
-    await client.wait_until_ready()
-    for server in client.servers:
-        while True:
-            if server.id == '432199586375794688':
-                if server.owner.game.type == 1:
-                    if titanLive is not True:
-                        titanChannel = discord.Object(id='432199586375794688')
-                        await chat.chat(titanChannel, 'Titan is now live on Twitch!')
-                        titanLive = True
-                        
-                else:
-                    titanLive = False
-                
-                time.sleep(60)
+    pass
 
 def restart():
     global botIsOn
