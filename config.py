@@ -3,11 +3,11 @@
 
 ## \/ DO NOT CHANGE THIS \/
 botType = "TDMB"
-abr = "Release"
-ver = "1.2"
-verName = "Points improvement, and SLOTS!"
+abr = "Snapshot"
+ver = "1.3c"
+verName = "Plugin Manager"
 
-nextUpdate = "Self-Updating Host? or random new features"
+nextUpdate = "/shrug"
 
 version = botType + ' ' + abr + ' ' + ver
 ## /\ DO NOT CHANGE THIS /\

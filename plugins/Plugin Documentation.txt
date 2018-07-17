@@ -1,0 +1,58 @@
+The Derpy Meme Bot discord uses the Discord.py API wrapper
+
+Heres the basics of what you need to know:
+
+If you know Python, you probably dont need to read this, but you probably should, to get a basic idea of how to make a plugin
+using this API
+
+First you want to make a new text document, then rename it to
+<pluginName>.py
+Your computer should ask you if your sure you want to change the file extension, as the file may become unstable
+click OK or whatever your computer says
+
+This file is your plugin file, and you want to add your code here.
+Your first four lines of your plugin file should be:
+
+Next, copy this into your plugin file:
+
+import sys 
+sys.path.append('..')
+import discordBot as bot
+import discord
+    
+botclient = None
+__commands__ = [] # Add a list of any commands your bot uses here
+
+async def chat(channel, message=None, tts=False): # used to send messages, channel is the id of the channel, message is what should be in the message, and tts is if it should be a TTS message
+    if message == None:
+        dp('Bot tried sending an empty message!')
+        return None
+    else:
+        try:
+            msg = await botclient.send_message(channel, message, tts=tts)
+            return msg
+        except discord.errors.Forbidden:
+            p('The bot is not allowed to send messages to this channel')
+            return None
+            
+async def on_message(message): # this funtion is where all your code for your plugin will go
+    server = message.server
+    ch = message.channel # shortcut for the channel, use this as the first variable when sending a chat message
+    channel = message.channel
+    author = message.author # shortcut for the author of the message
+    
+    
+    arguments = message.content.split(' ') # splits the command at each space, so we can eaisly get each argument
+    command = arguments[0].lower() # Lets you check the first argument of a message, as this will usually be the command
+    
+    if server == None: # These variables dont exist in the context of a DM
+        isAdmin = True
+        isOwner = True
+    else:
+        isAdmin = author.server_permissions.administrator # if the user is an admin in the server
+        isOwner = author == message.server.owner # is the user is the owner of the discord server
+
+    if command == '!command':
+        pass
+        
+       
