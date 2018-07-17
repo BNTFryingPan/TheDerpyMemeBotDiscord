@@ -1187,7 +1187,7 @@ def runBot():
         dp('client.run')
         client.run(TOKEN)
     
-if __name__ == '__main__':
+def init():
     botT = threading.Thread(target=runBot)
     os.system('title ' + cfg.version)
     with open("ChatLog.txt", "a") as f:
