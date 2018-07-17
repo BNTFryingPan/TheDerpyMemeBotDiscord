@@ -14,6 +14,7 @@ version = botType + ' ' + abr + ' ' + ver
 
 ## General Settings Below
 hasNitro = False     # idk
+debug = False
 
 name = "TheDerpyMemeBot"
 
