@@ -1,1 +1,2 @@
-#import discordBot.py
+import discordBot
+discordBot.init()
