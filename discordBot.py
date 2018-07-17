@@ -308,7 +308,6 @@ async def on_member_join(member):
     pass
     
 async def checkStreamStatus():
-    return
     dp('waiting for client ready')
     await client.wait_until_ready()
     dp('client is ready, finding TitanFam...')
@@ -324,7 +323,6 @@ async def checkStreamStatus():
                         titanChannel = discord.Object(id='432199856623190030')
                         await chat.chat(titanChannel, '@here Titan is now live on Twitch! www.twitch.tv/titan_unlimited')
                         titanLive = True
-                        
                 else:
                     titanLive = False
                 
